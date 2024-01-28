@@ -7,7 +7,7 @@ import flet as ft
 # todo: change  link to docs
 
 # the content of the blur tab
-class Pravidla(ft.UserControl):
+class Novinky(ft.UserControl):
 
     def __init__(self):
         super().__init__()
@@ -16,8 +16,8 @@ class Pravidla(ft.UserControl):
 
         return ft.Column(
             [
-                ft.Text("Pravidla:", weight=ft.FontWeight.BOLD, size=21),
-                ft.Text("Moje pravidla..."),
+                ft.Text("Novinky:", weight=ft.FontWeight.BOLD, size=21),
+                ft.Text("Moje novinky..."),
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             scroll=ft.ScrollMode.HIDDEN,
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     def main(page: ft.Page):
         page.theme_mode = ft.ThemeMode.LIGHT
         page.window_always_on_top = True
-        page.add(Pravidla())
+        page.add(Novinky())
 
 
     ft.app(main, view=ft.WEB_BROWSER)

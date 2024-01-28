@@ -1,5 +1,6 @@
 import flet as ft
-from flet import AppBar, ElevatedButton, Page, Text, View, colors, NavigationRail
+from Novinky import Novinky
+from Pravidla import Pravidla
 
 class Message():
     def __init__(self, user_name: str, text: str, message_type: str):
@@ -57,8 +58,14 @@ def main(page: ft.Page):
     page.title = "Flet chat"
 
 
-    
-    
+    novinky = Novinky()
+    pravidla = Pravidla()
+
+    page_map = [
+        novinky,
+        pravidla,
+    ]
+
     def join_chat_click(e):
         if not join_user_name.value:
             join_user_name.error_text = "Name cannot be blank!"
@@ -86,9 +93,11 @@ def main(page: ft.Page):
         page.update()
 
     def nav_change(index):
-        print(index)
         main_body.controls.clear()
-        main_body.controls.append(ft.Column([ ft.Text("Body !"+str(index))], alignment=ft.MainAxisAlignment.START, expand=True))
+        if index < len(page_map):
+            main_body.controls.append(page_map[index])
+        else:
+            main_body.controls.append(ft.Column([ ft.Text(f"Sorry not found index {index}!")], alignment=ft.MainAxisAlignment.START, expand=True))
         page.update()
        
    
@@ -101,23 +110,24 @@ def main(page: ft.Page):
         group_alignment=-0.9,
         destinations=[
             ft.NavigationRailDestination(
-                icon=ft.icons.FAVORITE_BORDER, selected_icon=ft.icons.FAVORITE, label="First"
+                icon=ft.icons.FAVORITE_BORDER, selected_icon=ft.icons.FAVORITE, label="Novinky"
             ),
             ft.NavigationRailDestination(
                 icon_content=ft.Icon(ft.icons.BOOKMARK_BORDER),
                 selected_icon_content=ft.Icon(ft.icons.BOOKMARK),
-                label="Second",
+                label="Pravidla",
             ),
             ft.NavigationRailDestination(
                 icon=ft.icons.SETTINGS_OUTLINED,
                 selected_icon_content=ft.Icon(ft.icons.SETTINGS),
                 label_content=ft.Text("Settings"),
+
             ),
         ],
         on_change=lambda e: nav_change(e.control.selected_index),
     )
 
-    main_body = ft.Column([ ft.Text("Body!")], alignment=ft.MainAxisAlignment.START, expand=True)
+    main_body = ft.Column([Novinky()], alignment=ft.MainAxisAlignment.START, expand=True)
 
     page.add(
         ft.Row(
