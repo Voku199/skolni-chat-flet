@@ -1,6 +1,8 @@
 import flet as ft
+import socket
 from Novinky import Novinky
 from Pravidla import Pravidla
+from Podpora import Podpora
 
 class Message():
     def __init__(self, user_name: str, text: str, message_type: str):
@@ -55,26 +57,34 @@ class ChatMessage(ft.Row):
 
 def main(page: ft.Page):
     page.horizontal_alignment = "stretch"
-    page.title = "Flet chat"
+    page.title = "Zstsobra chat (Beta verze)"
+    page.theme_mode = ft.ThemeMode.DARK
 
 
-    novinky = Novinky()
+
+
+    
     pravidla = Pravidla()
+    novinky = Novinky()
+    podpora = Podpora()
 
     page_map = [
-        novinky,
         pravidla,
+        novinky,
+        podpora,
     ]
 
     def join_chat_click(e):
         if not join_user_name.value:
-            join_user_name.error_text = "Name cannot be blank!"
+            join_user_name.error_text = "Jméno musí obsahovat!"
             join_user_name.update()
         else:
+            hostname = socket.gethostname()
+            ip_address = socket.gethostbyname(hostname)
             page.session.set("user_name", join_user_name.value)
             page.dialog.open = False
             new_message.prefix = ft.Text(f"{join_user_name.value}: ")
-            page.pubsub.send_all(Message(user_name=join_user_name.value, text=f"{join_user_name.value} has joined the chat.", message_type="login_message"))
+            page.pubsub.send_all(Message(user_name=join_user_name.value, text=f"{join_user_name.value} Se připojil do chatu!. Jeho IP: {ip_address}", message_type="login_message"))
             page.update()
 
     def send_message_click(e):
@@ -97,7 +107,7 @@ def main(page: ft.Page):
         if index < len(page_map):
             main_body.controls.append(page_map[index])
         else:
-            main_body.controls.append(ft.Column([ ft.Text(f"Sorry not found index {index}!")], alignment=ft.MainAxisAlignment.START, expand=True))
+            main_body.controls.append(ft.Column([ ft.Text(f"Hmmm. Něco chybí zde. {index} Klikni na Novinky/Pravidla.")], alignment=ft.MainAxisAlignment.START, expand=True))
         page.update()
        
    
@@ -110,24 +120,24 @@ def main(page: ft.Page):
         group_alignment=-0.9,
         destinations=[
             ft.NavigationRailDestination(
-                icon=ft.icons.FAVORITE_BORDER, selected_icon=ft.icons.FAVORITE, label="Novinky"
+                icon=ft.icons.BOOK, selected_icon=ft.icons.BOOK, label="Pravidla"
             ),
             ft.NavigationRailDestination(
-                icon_content=ft.Icon(ft.icons.BOOKMARK_BORDER),
-                selected_icon_content=ft.Icon(ft.icons.BOOKMARK),
-                label="Pravidla",
+                icon_content=ft.Icon(ft.icons.NEWSPAPER),
+                selected_icon_content=ft.Icon(ft.icons.NEWSPAPER),
+                label="Novinky",
             ),
             ft.NavigationRailDestination(
-                icon=ft.icons.SETTINGS_OUTLINED,
-                selected_icon_content=ft.Icon(ft.icons.SETTINGS),
-                label_content=ft.Text("Settings"),
+                icon_content=ft.Icon(ft.icons.FAVORITE_BORDER),
+                selected_icon_content=ft.Icon(ft.icons.FAVORITE),
+                label="Podpora",
 
             ),
         ],
         on_change=lambda e: nav_change(e.control.selected_index),
     )
 
-    main_body = ft.Column([Novinky()], alignment=ft.MainAxisAlignment.START, expand=True)
+    main_body = ft.Column([Pravidla()], alignment=ft.MainAxisAlignment.START, expand=True)
 
     page.add(
         ft.Row(
@@ -150,16 +160,16 @@ def main(page: ft.Page):
 
     # A dialog asking for a user display name
     join_user_name = ft.TextField(
-        label="Enter your name to join the chat",
+        label="Zadej jméno abys se připojil.",
         autofocus=True,
         on_submit=join_chat_click,
     )
     page.dialog = ft.AlertDialog(
         open=True,
         modal=True,
-        title=ft.Text("Welcome!"),
+        title=ft.Text("Vítej!"),
         content=ft.Column([join_user_name], width=300, height=70, tight=True),
-        actions=[ft.ElevatedButton(text="Join chat", on_click=join_chat_click)],
+        actions=[ft.ElevatedButton(text="Připojit se", on_click=join_chat_click)],
         actions_alignment="end",
     )
 
@@ -172,7 +182,7 @@ def main(page: ft.Page):
 
     # A new message entry form
     new_message = ft.TextField(
-        hint_text="Write a message...",
+        hint_text="Napiš zprávu...",
         autofocus=True,
         shift_enter=True,
         min_lines=1,
@@ -196,7 +206,7 @@ def main(page: ft.Page):
                 new_message,
                 ft.IconButton(
                     icon=ft.icons.SEND_ROUNDED,
-                    tooltip="Send message",
+                    tooltip="Pošli zprávu",
                     on_click=send_message_click,
                 ),
             ]
