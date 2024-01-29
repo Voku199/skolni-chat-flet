@@ -137,7 +137,7 @@ def main(page: ft.Page):
         on_change=lambda e: nav_change(e.control.selected_index),
     )
 
-    main_body = ft.Column([Pravidla()], alignment=ft.MainAxisAlignment.START, expand=True)
+    main_body = ft.Column([Pravidla()], alignment=ft.MainAxisAlignment.START, expand=True, scroll=ft.ScrollMode.AUTO)
 
     page.add(
         ft.Row(
