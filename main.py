@@ -3,9 +3,18 @@ import socket
 from Novinky import Novinky
 from Pravidla import Pravidla
 from Podpora import Podpora
-import logging
-logging.basicConfig(level=logging.DEBUG)
-logging.getLogger("Databáze.txt").setLevel(logging.INFO)
+
+import mysql.connector
+import bcrypt
+
+mydb = mysql.connector.connect(
+   host="127.0.0.1",
+    port=3306,
+    user="root",
+    password="rootroot",
+    database="chat"
+)
+cursor = mydb.cursor()
 
 
 
@@ -140,11 +149,7 @@ def main(page: ft.Page):
             expand=True,
         )
     )
-   
-   
-   
-   
-   
+
     page.pubsub.subscribe(on_message)
     # A dialog asking for a user display name
     join_user_name = ft.TextField(
@@ -152,11 +157,17 @@ def main(page: ft.Page):
         autofocus=True,
         on_submit=join_chat_click,
     )
+    user_password = ft.TextField(
+        label="Zadej heslo",
+        password=True,
+        on_submit=join_chat_click,
+    )
+
     page.dialog = ft.AlertDialog(
         open=True,
         modal=True,
         title=ft.Text("Vítej!"),
-        content=ft.Column([join_user_name], width=300, height=70, tight=True),
+        content=ft.Column([join_user_name, user_password], width=300, height=140, tight=True),
         actions=[ft.ElevatedButton(text="Připojit se", on_click=join_chat_click)],
         actions_alignment="end",
     )

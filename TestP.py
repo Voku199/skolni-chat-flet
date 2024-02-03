@@ -1,13 +1,13 @@
 import flet as ft
 from flet import TextField, Checkbox, ElevatedButton, Text, Row, Column, ControlEvent, SnackBar, DataCell, DataRow, IconButton,DataTable,DataColumn,Page
 import mysql.connector
-
+import bcrypt
 
 mydb = mysql.connector.connect(
    host="127.0.0.1",
     port=3306,
     user="root",
-    password="root",
+    password="rootroot",
     database="chat"
 )
 cursor = mydb.cursor()
@@ -23,28 +23,6 @@ def main(page: ft.Page) -> None:
     page.window_resizable = True
     user_name = TextField(label="name")
     password = TextField(label="password")
-
-
-   
-		
-    
-    
-        #Ok
-    def deletebtn(e):
-        pass
-
-    def editbtn(e):
-        pass   
-    
-    
-    def load_data():
-        login_name = "voku"
-     
-
-        page.update()  
-
-    #Ok
-    load_data()             
 
     def addtodb(e):
         try:
@@ -76,17 +54,55 @@ def main(page: ft.Page) -> None:
     #Setup
     text_username: TextField = TextField(label="Username", text_align=ft.TextAlign.LEFT, width=300)
     text_password: TextField = TextField(label="Pasword", text_align=ft.TextAlign.LEFT, width=300, password=True)
-    chechbox_signup: Checkbox = Checkbox(label="Stuff", value= False)
+
     button_submit: ElevatedButton = ElevatedButton(text="Sing up", width=200, disabled=True)
+    button_sigin: ElevatedButton = ElevatedButton(text="Sing in", width=200)
+
+
+    def hash_password(password, salt=None):
+        # Hash a password using bcrypt
+        if salt is None:
+            salt = bcrypt.gensalt()
+        else:
+            salt = salt.encode('utf-8')
+
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
+        return hashed_password, salt
 
     #new
     def validate(e: ControlEvent) -> None:
-        if all([text_username.value, text_password.value, chechbox_signup.value]):
+        if all([text_username.value, text_password.value]):
             button_submit.disabled = False
         else:
             button_submit.disabled = True    
 
         page.update()
+
+    def signin(e: ControlEvent) -> None:
+
+        sql = "SELECT * FROM user WHERE user_name = %s OR email = %s LIMIT 1"
+        cursor.execute(sql, (text_username.value,text_username.value))
+        result = cursor.fetchall()
+        columns = [column[0] for column in cursor.description]
+        data = [dict(zip(columns, row)) for row in result]
+        if not data:
+            password, salt = hash_password(text_password.value)
+            insert = "INSERT INTO user (user_name, password, salt) VALUES(%s,%s,%s)"
+            val = (text_username.value, password, salt)
+            cursor.execute(insert,val)
+            mydb.commit()
+            print(cursor.rowcount,"YOUR RECORD INSERT !!")
+            submit(e)
+        else:
+            print("User already exists")
+            page.clean()
+            page.add(
+                Row(
+                    controls=[Text(value=f"User already exists: {text_username.value}", size=20)],
+                    alignment=ft.MainAxisAlignment.CENTER
+                )
+            )
+
 
     def submit(e: ControlEvent) -> None:
         print("Username:", text_username.value)
@@ -97,9 +113,11 @@ def main(page: ft.Page) -> None:
         columns = [column[0] for column in cursor.description]
         data = [dict(zip(columns, row)) for row in result]
 
-        print(data)
+        print(data[0])
         if data:
-            if data[0].password == text_password.value:
+            password, salt = hash_password(text_password.value, data[0]['salt'])
+            print(password.decode("utf-8"))
+            if data[0]['password'] == password.decode("utf-8"):
                 page.clean()
                 page.add(
                     Row(
@@ -110,12 +128,12 @@ def main(page: ft.Page) -> None:
             else:
                 print("Wrong password")
         else:
-            print("Wrong not user found")
+            print("Not user found")
  
-    chechbox_signup.on_change = validate
     text_username.on_change = validate
     text_password.on_change = validate
     button_submit.on_click = submit
+    button_sigin.on_click = signin
 
     page.add(
         Row(
@@ -123,9 +141,9 @@ def main(page: ft.Page) -> None:
                 Column(
                     [text_username,
                      text_password,
-                     chechbox_signup,
-                     button_submit]
-            
+                     button_submit,
+                     button_sigin]
+
                 )
             ],
             alignment=ft.MainAxisAlignment.CENTER
