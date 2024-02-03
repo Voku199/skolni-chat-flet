@@ -3,13 +3,17 @@ import socket
 from Novinky import Novinky
 from Pravidla import Pravidla
 from Podpora import Podpora
+import logging
+logging.basicConfig(level=logging.DEBUG)
+logging.getLogger("Databáze.txt").setLevel(logging.INFO)
+
+
 
 class Message():
     def __init__(self, user_name: str, text: str, message_type: str):
         self.user_name = user_name
         self.text = text
         self.message_type = message_type
-
 class ChatMessage(ft.Row):
     def __init__(self, message: Message):
         super().__init__()
@@ -30,13 +34,11 @@ class ChatMessage(ft.Row):
                 ),
             ]
      
-
     def get_initials(self, user_name: str):
         if user_name:
             return user_name[:1].capitalize()
         else:
             return "Unknown"  # or any default value you prefer
-
     def get_avatar_color(self, user_name: str):
         colors_lookup = [
             ft.colors.AMBER,
@@ -54,26 +56,19 @@ class ChatMessage(ft.Row):
             ft.colors.YELLOW,
         ]
         return colors_lookup[hash(user_name) % len(colors_lookup)]
-
 def main(page: ft.Page):
     page.horizontal_alignment = "stretch"
     page.title = "Zstsobra chat (Beta verze)"
     page.theme_mode = ft.ThemeMode.DARK
-
-
-
-
     
     pravidla = Pravidla()
     novinky = Novinky()
     podpora = Podpora()
-
     page_map = [
         pravidla,
         novinky,
         podpora,
     ]
-
     def join_chat_click(e):
         if not join_user_name.value:
             join_user_name.error_text = "Jméno musí obsahovat!"
@@ -86,14 +81,12 @@ def main(page: ft.Page):
             new_message.prefix = ft.Text(f"{join_user_name.value}: ")
             page.pubsub.send_all(Message(user_name=join_user_name.value, text=f"{join_user_name.value} Se připojil do chatu!. Jeho IP: {ip_address}", message_type="login_message"))
             page.update()
-
     def send_message_click(e):
         if new_message.value != "":
             page.pubsub.send_all(Message(page.session.get("user_name"), new_message.value, message_type="chat_message"))
             new_message.value = ""
             new_message.focus()
             page.update()
-
     def on_message(message: Message):
         if message.message_type == "chat_message":
             m = ChatMessage(message)
@@ -101,7 +94,6 @@ def main(page: ft.Page):
             m = ft.Text(message.text, italic=True, color=ft.colors.WHITE70, size=12)
         chat.controls.append(m)
         page.update()
-
     def nav_change(index):
         main_body.controls.clear()
         if index < len(page_map):
@@ -131,13 +123,13 @@ def main(page: ft.Page):
                 icon_content=ft.Icon(ft.icons.FAVORITE_BORDER),
                 selected_icon_content=ft.Icon(ft.icons.FAVORITE),
                 label="Podpora",
-
             ),
         ],
         on_change=lambda e: nav_change(e.control.selected_index),
     )
 
     main_body = ft.Column([Pravidla()], alignment=ft.MainAxisAlignment.START, expand=True)
+    main_body = ft.Column([Pravidla()], alignment=ft.MainAxisAlignment.START, expand=True, scroll=ft.ScrollMode.AUTO)
 
     page.add(
         ft.Row(
@@ -149,15 +141,12 @@ def main(page: ft.Page):
             expand=True,
         )
     )
-
-
    
    
    
    
    
     page.pubsub.subscribe(on_message)
-
     # A dialog asking for a user display name
     join_user_name = ft.TextField(
         label="Zadej jméno abys se připojil.",
@@ -172,14 +161,12 @@ def main(page: ft.Page):
         actions=[ft.ElevatedButton(text="Připojit se", on_click=join_chat_click)],
         actions_alignment="end",
     )
-
     # Chat messages
     chat = ft.ListView(
         expand=True,
         spacing=10,
         auto_scroll=True,
     )
-
     # A new message entry form
     new_message = ft.TextField(
         hint_text="Napiš zprávu...",
@@ -191,7 +178,6 @@ def main(page: ft.Page):
         expand=True,
         on_submit=send_message_click,
     )
-
     # Add everything to the page
     page.add(
         ft.Container(
@@ -212,5 +198,4 @@ def main(page: ft.Page):
             ]
         ),
     )
-
 ft.app(port=8550, target=main, view=ft.WEB_BROWSER)
