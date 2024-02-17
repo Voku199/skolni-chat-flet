@@ -1,18 +1,21 @@
 import flet as ft
+from flet import Text,  ControlEvent, TextField, ElevatedButton, Row
 import socket
+import webbrowser
+import os
 from Novinky import Novinky
 from Pravidla import Pravidla
 from Podpora import Podpora
-
+from Nastavení import Nastavení
 import mysql.connector
 import bcrypt
 
 mydb = mysql.connector.connect(
-   host="127.0.0.1",
-    port=3306,
-    user="root",
-    password="rootroot",
-    database="chat"
+   host=os.environ["DB_HOST"],
+    port=os.environ["DB_PORT"],
+    user=os.environ["DB_USER"],
+    password=os.environ["DB_PASS"],
+    database=os.environ["DB_NAME"]
 )
 cursor = mydb.cursor()
 
@@ -69,27 +72,73 @@ def main(page: ft.Page):
     page.horizontal_alignment = "stretch"
     page.title = "Zstsobra chat (Beta verze)"
     page.theme_mode = ft.ThemeMode.DARK
+
     
     pravidla = Pravidla()
     novinky = Novinky()
     podpora = Podpora()
+    nastavení = Nastavení()
     page_map = [
         pravidla,
         novinky,
         podpora,
+        nastavení,
     ]
+
+
+
     def join_chat_click(e):
-        if not join_user_name.value:
-            join_user_name.error_text = "Jméno musí obsahovat!"
-            join_user_name.update()
+        login = submit(text_username, text_password)
+        if not text_username.value or not text_password.value:
+            error_message = "Zadej uživatélské jméno."
+            text_password.error_text = "Zadej heslo."
+            text_username.error_text = error_message
+            text_password.error_text = text_password.error_text
+            text_username.update()
+            text_password.update()
+            page.dialog.update()
+            return
+        
+        if not login["success"]:
+            error_message = login.get("message", "An unknown error occurred.")
+            text_username.error_text = error_message
+            text_username.update()
+
+        # Přidáme tlačítko pro znovu přihlášení       
+
+            page.dialog.update()
+
         else:
             hostname = socket.gethostname()
             ip_address = socket.gethostbyname(hostname)
-            page.session.set("user_name", join_user_name.value)
+            user = login["user"]["user_name"]
+            page.session.set("user_name", login["user"]["user_name"])
             page.dialog.open = False
-            new_message.prefix = ft.Text(f"{join_user_name.value}: ")
-            page.pubsub.send_all(Message(user_name=join_user_name.value, text=f"{join_user_name.value} Se připojil do chatu!. Jeho IP: {ip_address}", message_type="login_message"))
+            new_message.prefix = ft.Text(f"{user}: ")
+            page.pubsub.send_all(Message(user_name=user, text=f"{user} Se připojil do chatu!. Jeho IP: {ip_address}", message_type="login_message"))
             page.update()
+    
+    def clear_error_and_retry():
+       text_username.error_text = ""
+       text_username.update()
+
+    # Kód pro skrytí tlačítka a možnost znovu zadat jméno a heslo
+       page.dialog.actions.pop()  # Odebrat tlačítko "Znovu přihlásit"
+       page.dialog.update()
+
+       text_username.value = ""  # Vyčistit pole s uživatelským jménem
+       text_password.value = ""  # Vyčistit pole s heslem
+       text_username.focus()  # Nastavit kurzor do pole s uživatelským jménem
+
+    def create_account(e):
+    # Přesměrování na stránku pro registraci
+        webbrowser.open("https://voku-skolni-chat.fly.dev/")
+       
+
+    
+    
+    
+    
     def send_message_click(e):
         if new_message.value != "":
             page.pubsub.send_all(Message(page.session.get("user_name"), new_message.value, message_type="chat_message"))
@@ -103,6 +152,18 @@ def main(page: ft.Page):
             m = ft.Text(message.text, italic=True, color=ft.colors.WHITE70, size=12)
         chat.controls.append(m)
         page.update()
+
+    def hash_password(password, salt=None):
+        # Hash a password using bcrypt
+        if salt is None:
+            salt = bcrypt.gensalt()
+        else:
+            salt = salt.encode('utf-8')
+
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
+        return hashed_password, salt
+
+    
     def nav_change(index):
         main_body.controls.clear()
         if index < len(page_map):
@@ -110,7 +171,34 @@ def main(page: ft.Page):
         else:
             main_body.controls.append(ft.Column([ ft.Text(f"Hmmm. Něco chybí zde. {index} Klikni na Novinky/Pravidla.")], alignment=ft.MainAxisAlignment.START, expand=True))
         page.update()
-       
+
+    def submit(username: TextField, password: TextField) -> dict:
+        print("Username:", username.value)
+        print("Password:", password.value)
+        
+        response = {"success": False}
+        
+        cursor.execute("SELECT * FROM user WHERE user_name = %s OR email = %s LIMIT 1",(username.value, username.value))
+        result = cursor.fetchall()
+        columns = [column[0] for column in cursor.description]
+        data = [dict(zip(columns, row)) for row in result]
+
+        if data and data[0]:
+            hashed_password, _ = hash_password(password.value, data[0]['salt'])
+            if data[0]['password'] == hashed_password.decode("utf-8"):
+                response["success"] = True
+                response["user"] = data[0]
+
+            else:
+                response["message"] = "Špatně jsi zadal heslo"
+        else:
+            response["message"] = "Špatně jsi zadal jméno"
+
+        return response              
+
+
+
+
    
     rail = ft.NavigationRail(
         selected_index=0,
@@ -133,6 +221,13 @@ def main(page: ft.Page):
                 selected_icon_content=ft.Icon(ft.icons.FAVORITE),
                 label="Podpora",
             ),
+            ft.NavigationRailDestination(
+                icon_content=ft.Icon(ft.icons.SETTINGS),
+                selected_icon_content=ft.Icon(ft.icons.SETTINGS),
+                label="Nastavení",    
+
+                
+            ),
         ],
         on_change=lambda e: nav_change(e.control.selected_index),
     )
@@ -152,12 +247,12 @@ def main(page: ft.Page):
 
     page.pubsub.subscribe(on_message)
     # A dialog asking for a user display name
-    join_user_name = ft.TextField(
-        label="Zadej jméno abys se připojil.",
+    text_username = ft.TextField(
+        label="Zadej uživatélské jméno.",
         autofocus=True,
         on_submit=join_chat_click,
     )
-    user_password = ft.TextField(
+    text_password = ft.TextField(
         label="Zadej heslo",
         password=True,
         on_submit=join_chat_click,
@@ -167,8 +262,11 @@ def main(page: ft.Page):
         open=True,
         modal=True,
         title=ft.Text("Vítej!"),
-        content=ft.Column([join_user_name, user_password], width=300, height=140, tight=True),
-        actions=[ft.ElevatedButton(text="Připojit se", on_click=join_chat_click)],
+        content=ft.Column([text_username, text_password], width=300, height=140, tight=True),
+        actions=[
+            ft.ElevatedButton(text="Připojit se", on_click=join_chat_click),
+            ft.ElevatedButton(text="Registrovat účet", on_click=create_account),
+        ],
         actions_alignment="end",
     )
     # Chat messages

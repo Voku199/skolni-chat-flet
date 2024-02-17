@@ -1,6 +1,7 @@
 import flet as ft
 from flet import TextField, ElevatedButton, Text, Row, Column, ControlEvent, Page
 import mysql.connector
+import webbrowser
 import bcrypt
 
 mydb = mysql.connector.connect(
@@ -17,11 +18,15 @@ def main(page: ft.Page) -> None:
     page.title = "Databáze login"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.theme_mode = ft.ThemeMode.SYSTEM
+    page.window_width = 600
+    page.window_height = 600
     page.window_resizable = True
 
-    user_name = TextField(label="Jméno (Napiš pravý jméno)")
+    user_name = TextField(label="Jméno (Napiš pravý jméno a svojí třídu)")
     password = TextField(label="Heslo")
     button_submit = ElevatedButton(text="Registrovat účet.", width=200, disabled=True)
+    
+    
 
     def add_to_db(e):
         try:
@@ -31,20 +36,51 @@ def main(page: ft.Page) -> None:
             cursor.execute(sql, val)
             mydb.commit()
             print(cursor.rowcount, "YOUR RECORD INSERTED !!")
-            show_success_message()
+            show_success_message(user_name.value, password.value)  # Zobrazení úspěšné zprávy s údaji o novém účtu
         except Exception as e:
             print(e)
-            show_error_message("Hmmm Nějaký error se našel. Kontaktuj mě.")
+            show_error_message("Jméno už bohužel existuje. Jestli ti někdo ukradnul tvoje jméno. Kontaktuj mě. Email : vojta.kurinec@gmail.com")
+            page.add(
+                Row(
+                    controls=[
+                        Column(
+                            [
+                                ElevatedButton(text="Zpět na registrování", on_click=create_account),
+                            ]
+                        )
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER
+                )
+            )
+                
 
-    def show_success_message():
+    def show_success_message(user, password):
         page.clean()
         page.add(
             Row(
-                controls=[Text(value="Účet byl zaregistrován!", size=20)],
+                controls=[
+                    Column(
+                        [
+                            Text(value="Účet byl zaregistrován!", size=25),
+                            Text(value=f"Jméno: {user}", size=16),  # Zobrazení jména nového uživatele
+                            Text(value=f"Heslo: {password}", size=16),  # Zobrazení hesla nového uživatele
+                            Text("Dobře jsi zapamatuj heslo aj i jméno!", size=20),
+                            ElevatedButton(text="Zpět na chat.", on_click=return_to_page),
+                            
+
+                        ]
+                    )
+                ],
                 alignment=ft.MainAxisAlignment.CENTER
             )
         )
-
+    
+    def create_account(e):
+        webbrowser.open("https://voku-skolni-chat.fly.dev/") # Zde pak dám stranku která je
+    
+    def return_to_page(e):
+        webbrowser.open("https://voku-skolni-chat.fly.dev/")  # Přesměrování na hlavní stránku
+    
     def show_error_message(message):
         page.clean()
         page.add(
@@ -73,8 +109,6 @@ def main(page: ft.Page) -> None:
     user_name.on_change = validate
     password.on_change = validate
     button_submit.on_click = add_to_db
-
-
 
     page.add(
         Row(

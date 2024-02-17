@@ -17,11 +17,14 @@ def main(page: ft.Page) -> None:
     page.title = "Databáze login"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.theme_mode = ft.ThemeMode.SYSTEM
+    page.window_width = 600
+    page.window_height = 600
     page.window_resizable = True
 
-    user_name = TextField(label="Jméno (Napiš pravý jméno)")
-    password = TextField(label="Heslo")
-    button_submit = ElevatedButton(text="Registrovat účet.", width=200, disabled=True)
+    user_name = TextField(label="name")
+    password = TextField(label="password")
+    button_submit = ElevatedButton(text="Sign up", width=200, disabled=True)
+    button_signin = ElevatedButton(text="Sign in", width=200)
 
     def add_to_db(e):
         try:
@@ -34,13 +37,13 @@ def main(page: ft.Page) -> None:
             show_success_message()
         except Exception as e:
             print(e)
-            show_error_message("Hmmm Nějaký error se našel. Kontaktuj mě.")
+            show_error_message("Error occurred while adding record.")
 
     def show_success_message():
         page.clean()
         page.add(
             Row(
-                controls=[Text(value="Účet byl zaregistrován!", size=20)],
+                controls=[Text(value="Record successfully added!", size=20)],
                 alignment=ft.MainAxisAlignment.CENTER
             )
         )
@@ -70,11 +73,14 @@ def main(page: ft.Page) -> None:
             button_submit.disabled = True
         page.update()
 
+    def signin(e: ControlEvent) -> None:
+        # Implement sign-in functionality
+        pass
+
     user_name.on_change = validate
     password.on_change = validate
     button_submit.on_click = add_to_db
-
-
+    button_signin.on_click = signin
 
     page.add(
         Row(
@@ -82,7 +88,8 @@ def main(page: ft.Page) -> None:
                 Column(
                     [user_name,
                      password,
-                     button_submit]
+                     button_submit,
+                     button_signin]
                 )
             ],
             alignment=ft.MainAxisAlignment.CENTER
