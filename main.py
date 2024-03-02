@@ -52,6 +52,7 @@ class Registrace():
             ip_address = socket.gethostbyname(hostname)
             user = login["user"]["user_name"]
             page.session.set("user_name", login["user"]["user_name"])
+            page.session.set("user_id", login["user"]["id"])
             page.dialog.open = False
             page.pubsub.send_all(Message(user_name=user, text=f"{user} Se připojil do chatu!. Jeho IP: {ip_address}", message_type="login_message"))
             page.update()
@@ -125,11 +126,14 @@ def hash_password(password, salt=None):
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
     return hashed_password, salt
 
+def _logout(page: ft.Page, chat):
+    page.session.clear()
+    chat.controls.clear()
+    page.dialog.open = True
+    page.update()
+
 
 def _login(username: TextField, password: TextField) -> dict:
-    print("Username:", username.value)
-    print("Password:", password.value)
-
     response = {"success": False}
 
     cursor.execute("SELECT * FROM user WHERE user_name = %s OR email = %s LIMIT 1", (username.value, username.value))
@@ -160,6 +164,7 @@ def main(page: ft.Page):
     novinky = Novinky()
     podpora = Podpora()
     nastavení = Nastavení()
+
     page_map = [
         pravidla,
         novinky,
@@ -168,7 +173,6 @@ def main(page: ft.Page):
     ]
 
     def join_chat_click(e):
-        login = _login(text_username, text_password)
         if not text_username.value or not text_password.value:
             error_message = "Zadej uživatélské jméno."
             text_password.error_text = "Zadej heslo."
@@ -178,6 +182,11 @@ def main(page: ft.Page):
             text_password.update()
             page.dialog.update()
             return
+
+        login = _login(text_username, text_password)
+        # Clear the password field
+        text_password.value = ""
+        text_password.update()
 
         if not login["success"]:
             error_message = login.get("message", "An unknown error occurred.")
@@ -189,10 +198,13 @@ def main(page: ft.Page):
             page.dialog.update()
 
         else:
+            text_username.value = ""
+            text_username.update()
             hostname = socket.gethostname()
             ip_address = socket.gethostbyname(hostname)
             user = login["user"]["user_name"]
             page.session.set("user_name", login["user"]["user_name"])
+            page.session.set("user_id", login["user"]["id"])
             page.dialog.open = False
             new_message.prefix = ft.Text(f"{user}: ")
             page.pubsub.send_all(Message(user_name=user, text=f"{user} Se připojil do chatu!. Jeho IP: {ip_address}", message_type="login_message"))
@@ -278,19 +290,13 @@ def main(page: ft.Page):
 
     main_body = ft.Column([Pravidla()], alignment=ft.MainAxisAlignment.START, expand=True, scroll=ft.ScrollMode.AUTO)
 
-    page.add(
-        ft.Row(
-            [
-                rail,
-                ft.VerticalDivider(width=1),
-                main_body
-            ],
-            expand=True,
-        )
+    # Chat messages
+    chat = ft.ListView(
+        expand=True,
+        spacing=10,
+        auto_scroll=True,
     )
 
-    page.pubsub.subscribe(on_message)
-    # A dialog asking for a user display name
     text_username = ft.TextField(
         label="Zadej uživatélské jméno.",
         autofocus=True,
@@ -313,12 +319,31 @@ def main(page: ft.Page):
         ],
         actions_alignment="end",
     )
-    # Chat messages
-    chat = ft.ListView(
-        expand=True,
-        spacing=10,
-        auto_scroll=True,
+
+
+    page.add(
+        ft.Row(
+            [
+                rail,
+                ft.VerticalDivider(width=1),
+                ft.Column([
+                    ft.IconButton(
+                        icon=ft.icons.LOGOUT,
+                        tooltip="Odhlásit",
+                        on_click=lambda e: _logout(page, chat),
+                    ),
+                    main_body]
+                )
+            ],
+            expand=True,
+        )
     )
+
+    page.pubsub.subscribe(on_message)
+    # A dialog asking for a user display name
+
+    print("User not logged in")
+
     # A new message entry form
     new_message = ft.TextField(
         hint_text="Napiš zprávu...",
