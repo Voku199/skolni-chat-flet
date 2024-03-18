@@ -11,6 +11,9 @@ from Nastavení import Nastavení
 import mysql.connector
 import bcrypt
 
+# Seznam přihlášených uživatelů
+online_users = set()
+
 mydb = mysql.connector.connect(
     host=os.environ["DB_HOST"],
     port=os.environ["DB_PORT"],
@@ -19,7 +22,6 @@ mydb = mysql.connector.connect(
     database=os.environ["DB_NAME"]
 )
 cursor = mydb.cursor()
-
 
 class Registrace():
     def __init__(self, Page: ft.Page):
@@ -63,13 +65,11 @@ class Registrace():
     def createForm(self):
         return ft.Column([self.user_name, self.email, self.password, self.password_confirm, self.submit, self.error_message], width=300, tight=True)
 
-
 class Message():
     def __init__(self, user_name: str, text: str, message_type: str):
         self.user_name = user_name
         self.text = text
         self.message_type = message_type
-
 
 class ChatMessage(ft.Row):
     def __init__(self, message: Message):
@@ -115,7 +115,6 @@ class ChatMessage(ft.Row):
         ]
         return colors_lookup[hash(user_name) % len(colors_lookup)]
 
-
 def hash_password(password, salt=None):
     # Hash a password using bcrypt
     if salt is None:
@@ -132,7 +131,6 @@ def _logout(page: ft.Page, chat):
     page.dialog.open = True
     page.update()
 
-
 def _login(username: TextField, password: TextField) -> dict:
     response = {"success": False}
 
@@ -147,13 +145,15 @@ def _login(username: TextField, password: TextField) -> dict:
             response["success"] = True
             response["user"] = data[0]
 
+            # Přidání uživatele do seznamu přihlášených uživatelů
+            online_users.add(data[0]['user_name'])
+
         else:
             response["message"] = "Špatně jsi zadal heslo"
     else:
         response["message"] = "Špatně jsi zadal jméno"
 
     return response
-
 
 def main(page: ft.Page):
     page.horizontal_alignment = "stretch"
@@ -297,6 +297,9 @@ def main(page: ft.Page):
         auto_scroll=True,
     )
 
+    # Načteme informace o uživateli ze session
+    stored_user_name = page.session.get("user_name")
+
     text_username = ft.TextField(
         label="Zadej uživatélské jméno.",
         autofocus=True,
@@ -320,6 +323,11 @@ def main(page: ft.Page):
         actions_alignment="end",
     )
 
+    def update_online_users():
+        online_users_text.value = f"Počet uživatelů online: {len(online_users)}"
+
+    online_users_text = Text(f"Počet uživatelů online: {len(online_users)}", color=ft.colors.WHITE, size=12)
+    page.add(online_users_text)
 
     page.add(
         ft.Row(
@@ -376,5 +384,7 @@ def main(page: ft.Page):
         ),
     )
 
+    # Spustí aktualizaci počtu uživatelů online
+    update_online_users()
 
 ft.app(port=8550, target=main, view=ft.WEB_BROWSER)

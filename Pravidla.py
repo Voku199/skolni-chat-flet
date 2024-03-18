@@ -33,6 +33,7 @@ class Pravidla(ft.UserControl):
                 ft.Text("13. Respektujte Majitele/Učitele: Poslouchejte pokyny Majitele/Učitelu a respektujte jejich rozhodnutí."),
                 ft.Text("14. Přispívejte k pozitivní atmosféře: Snažte se tvořit pozitivní a podpůrnou atmosféru pro všechny účastníky chatu."),
                 ft.Text("15. Pravidla týkající se obsahu: Jste povinni respektovat pravidla týkající se obsahu a neposkytovat nelegální nebo nevhodný materiál."),
+                ft.Text("16. Zákaz se přihlasovat za jiného.")
                 
             ],
             alignment=ft.MainAxisAlignment.CENTER,
