@@ -51,3 +51,4 @@ if __name__ == "__main__":
     root.title("Kvíz")
     quiz = Quiz(root, questions)
     root.mainloop()
+    

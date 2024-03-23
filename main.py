@@ -7,12 +7,15 @@ from Novinky import Novinky
 from Pravidla import Pravidla
 from Podpora import Podpora
 from Nastavení import Nastavení
+from Jsem import Jsem
+from Otazky import Otazky
 
 import mysql.connector
 import bcrypt
 
 # Seznam přihlášených uživatelů
 online_users = set()
+
 
 mydb = mysql.connector.connect(
     host=os.environ["DB_HOST"],
@@ -22,6 +25,7 @@ mydb = mysql.connector.connect(
     database=os.environ["DB_NAME"]
 )
 cursor = mydb.cursor()
+
 
 class Registrace():
     def __init__(self, Page: ft.Page):
@@ -65,11 +69,13 @@ class Registrace():
     def createForm(self):
         return ft.Column([self.user_name, self.email, self.password, self.password_confirm, self.submit, self.error_message], width=300, tight=True)
 
+
 class Message():
     def __init__(self, user_name: str, text: str, message_type: str):
         self.user_name = user_name
         self.text = text
         self.message_type = message_type
+
 
 class ChatMessage(ft.Row):
     def __init__(self, message: Message):
@@ -115,6 +121,7 @@ class ChatMessage(ft.Row):
         ]
         return colors_lookup[hash(user_name) % len(colors_lookup)]
 
+
 def hash_password(password, salt=None):
     # Hash a password using bcrypt
     if salt is None:
@@ -130,6 +137,7 @@ def _logout(page: ft.Page, chat):
     chat.controls.clear()
     page.dialog.open = True
     page.update()
+
 
 def _login(username: TextField, password: TextField) -> dict:
     response = {"success": False}
@@ -155,6 +163,7 @@ def _login(username: TextField, password: TextField) -> dict:
 
     return response
 
+
 def main(page: ft.Page):
     page.horizontal_alignment = "stretch"
     page.title = "Zstsobra chat (Beta verze)"
@@ -164,12 +173,16 @@ def main(page: ft.Page):
     novinky = Novinky()
     podpora = Podpora()
     nastavení = Nastavení()
+    jsem = Jsem()
+    otazky = Otazky()
 
     page_map = [
         pravidla,
         novinky,
         podpora,
         nastavení,
+        jsem,
+        otazky,
     ]
 
     def join_chat_click(e):
@@ -281,7 +294,20 @@ def main(page: ft.Page):
             ft.NavigationRailDestination(
                 icon_content=ft.Icon(ft.icons.SETTINGS),
                 selected_icon_content=ft.Icon(ft.icons.SETTINGS),
-                label="Nastavení",
+                label="Nastavení"
+
+            ),
+            ft.NavigationRailDestination(
+                icon_content=ft.Icon(ft.icons.EDIT_DOCUMENT),
+                selected_icon_content=ft.Icon(ft.icons.EDIT_DOCUMENT),
+                label="Kdo jsem?",
+
+                            ),
+            ft.NavigationRailDestination(
+                icon_content=ft.Icon(ft.icons.QUESTION_MARK),
+                selected_icon_content=ft.Icon(ft.icons.QUESTION_MARK),
+                label="Otazky",
+ 
 
             ),
         ],
@@ -296,9 +322,6 @@ def main(page: ft.Page):
         spacing=10,
         auto_scroll=True,
     )
-
-    # Načteme informace o uživateli ze session
-    stored_user_name = page.session.get("user_name")
 
     text_username = ft.TextField(
         label="Zadej uživatélské jméno.",
@@ -386,5 +409,6 @@ def main(page: ft.Page):
 
     # Spustí aktualizaci počtu uživatelů online
     update_online_users()
+
 
 ft.app(port=8550, target=main, view=ft.WEB_BROWSER)

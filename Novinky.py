@@ -29,7 +29,7 @@ class Novinky(ft.UserControl):
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             scroll=ft.ScrollMode.HIDDEN,
-            spacing=15,
+            spacing=10,
             expand=True
         )
 

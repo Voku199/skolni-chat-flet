@@ -7,6 +7,8 @@ from Novinky import Novinky
 from Pravidla import Pravidla
 from Podpora import Podpora
 from Nastavení import Nastavení
+from Jsem import Jsem
+from Otazky import Otazky
 
 import mysql.connector
 import bcrypt
@@ -171,12 +173,16 @@ def main(page: ft.Page):
     novinky = Novinky()
     podpora = Podpora()
     nastavení = Nastavení()
+    jsem = Jsem()
+    otazky = Otazky()
 
     page_map = [
         pravidla,
         novinky,
         podpora,
         nastavení,
+        jsem,
+        otazky,
     ]
 
     def join_chat_click(e):
@@ -288,7 +294,20 @@ def main(page: ft.Page):
             ft.NavigationRailDestination(
                 icon_content=ft.Icon(ft.icons.SETTINGS),
                 selected_icon_content=ft.Icon(ft.icons.SETTINGS),
-                label="Nastavení",
+                label="Nastavení"
+
+            ),
+            ft.NavigationRailDestination(
+                icon_content=ft.Icon(ft.icons.EDIT_DOCUMENT),
+                selected_icon_content=ft.Icon(ft.icons.EDIT_DOCUMENT),
+                label="Kdo jsem?",
+
+                            ),
+            ft.NavigationRailDestination(
+                icon_content=ft.Icon(ft.icons.QUESTION_MARK),
+                selected_icon_content=ft.Icon(ft.icons.QUESTION_MARK),
+                label="Otazky",
+ 
 
             ),
         ],
