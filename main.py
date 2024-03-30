@@ -6,7 +6,7 @@ import os
 from Novinky import Novinky
 from Pravidla import Pravidla
 from Podpora import Podpora
-from Nastavení import Nastavení
+from Nastaveni import Nastavení
 from Jsem import Jsem
 from Otazky import Otazky
 from Nahlaseni import Nahlaseni

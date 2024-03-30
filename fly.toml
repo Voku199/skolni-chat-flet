@@ -1,4 +1,4 @@
-app = "skolni-chat"
+app = "voku-skolni-chat"
 
 kill_signal = "SIGINT"
 kill_timeout = 5
