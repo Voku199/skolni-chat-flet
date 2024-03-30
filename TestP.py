@@ -1,5 +1,5 @@
 import flet as ft
-from flet import Text, ControlEvent, TextField, ElevatedButton, Row
+from flet import Text, ControlEvent, TextField, Dropdown, ElevatedButton, Row
 import socket
 import webbrowser
 import os
@@ -29,12 +29,19 @@ cursor = mydb.cursor()
 
 class Registrace():
     def __init__(self, Page: ft.Page):
-        self.user_name = TextField(label="Zadej uživatélské jméno.")
+ 
+        tridy = []
+        for i in range(9):
+            tridy.append(ft.dropdown.Option(f"{i+1}.A"))
+            tridy.append(ft.dropdown.Option(f"{i+1}.B"))
+ 
+        self.user_name = TextField(label="Zadej uživatélské jméno:")
         self.email = TextField(label="Zadej email.")
+        self.trida = Dropdown(label="Třída", options=tridy)
         self.password = TextField(label="Zadej heslo.", password=True)
         self.password_confirm = TextField(label="Potvrď heslo.", password=True)
         self.submit = ElevatedButton(text="Registrovat", on_click=self.submit_click)
-        self.error_message = Text("", color=ft.colors.RED, size=12)
+        self.error_message = Text("Jestli se ty nejde zaregistrovat, tak zkus jiný jméno, třeba přidat za svým jménem tečku, čárku, nebo něco jiného. Někdo už bohužel má tohle jméno zabraný."  ,size=12)
         self.page = Page
 
     def submit_click(self, e):
@@ -47,7 +54,7 @@ class Registrace():
             self.error_message.update()
             return
         hashed_password, salt = hash_password(self.password.value)
-        cursor.execute("INSERT INTO user (user_name, email, password, salt) VALUES (%s, %s, %s, %s)", (self.user_name.value, self.email.value, hashed_password.decode("utf-8"), salt.decode("utf-8")))
+        cursor.execute("INSERT INTO user (user_name, email, class, password, salt) VALUES (%s, %s, %s, %s, %s)", (self.user_name.value, self.email.value, self.trida.value,hashed_password.decode("utf-8"), salt.decode("utf-8")))
         mydb.commit()
 
         login = _login(self.user_name, self.password)
@@ -59,6 +66,7 @@ class Registrace():
             user = login["user"]["user_name"]
             page.session.set("user_name", login["user"]["user_name"])
             page.session.set("user_id", login["user"]["id"])
+            page.session.set("user_class", login["user"]["class"])
             page.dialog.open = False
             page.pubsub.send_all(Message(user_name=user, text=f"{user} Se připojil do chatu!. Jeho IP: {ip_address}", message_type="login_message"))
             page.update()
@@ -67,8 +75,7 @@ class Registrace():
         self.error_message.update()
 
     def createForm(self):
-        return ft.Column([self.user_name, self.email, self.password, self.password_confirm, self.submit, self.error_message], width=300, tight=True)
-
+        return ft.Column([self.user_name, self.email, self.trida, self.password, self.password_confirm, self.submit, self.error_message], width=300, tight=True)
 
 class Message():
     def __init__(self, user_name: str, text: str, message_type: str):
@@ -118,10 +125,10 @@ class ChatMessage(ft.Row):
             ft.colors.RED,
             ft.colors.TEAL,
             ft.colors.YELLOW,
+            ft.colors.INDIGO,
         ]
         return colors_lookup[hash(user_name) % len(colors_lookup)]
-
-
+    
 def hash_password(password, salt=None):
     # Hash a password using bcrypt
     if salt is None:
@@ -166,7 +173,7 @@ def _login(username: TextField, password: TextField) -> dict:
 
 def main(page: ft.Page):
     page.horizontal_alignment = "stretch"
-    page.title = "Zstsobra chat (Beta verze)"
+    page.title = "Zstsobra chat"
     page.theme_mode = ft.ThemeMode.DARK
 
     pravidla = Pravidla()
@@ -187,7 +194,7 @@ def main(page: ft.Page):
 
     def join_chat_click(e):
         if not text_username.value or not text_password.value:
-            error_message = "Zadej uživatélské jméno."
+            error_message = "Zadej uživatélské jméno ."
             text_password.error_text = "Zadej heslo."
             text_username.error_text = error_message
             text_password.error_text = text_password.error_text
@@ -207,7 +214,9 @@ def main(page: ft.Page):
             text_username.update()
 
             # Přidáme tlačítko pro znovu přihlášení
-
+            page.dialog.actions.append(
+                ft.ElevatedButton(text="Znovu přihlásit", on_click=clear_error_and_retry)
+            )
             page.dialog.update()
 
         else:
@@ -218,9 +227,26 @@ def main(page: ft.Page):
             user = login["user"]["user_name"]
             page.session.set("user_name", login["user"]["user_name"])
             page.session.set("user_id", login["user"]["id"])
+            page.session.set("user_class", login["user"]["class"])
+            page.session.set("user_email", login["user"]["email"])
             page.dialog.open = False
             new_message.prefix = ft.Text(f"{user}: ")
             page.pubsub.send_all(Message(user_name=user, text=f"{user} Se připojil do chatu!. Jeho IP: {ip_address}", message_type="login_message"))
+
+            cursor.execute("SELECT message, user_name, class FROM chat join user on user.id = chat.user_id order by chat.id desc limit 10", print(cursor.execute))
+            result = cursor.fetchall()
+            columns = [column[0] for column in cursor.description]
+
+        for row in result:
+            data = dict(zip(columns, row))
+            user_name = data["user_name"]
+            user_class = data.get("class", "")  # Získáme třídu uživatele, pokud existuje
+            message = Message(user_name=f"{user_name} {user_class}", text=data["message"], message_type="chat_message")
+            chat_message = ChatMessage(message)
+            chat.controls.append(chat_message)
+
+
+
             page.update()
 
     def clear_error_and_retry():
@@ -247,9 +273,13 @@ def main(page: ft.Page):
 
         page.update()
 
+        
+
     def send_message_click(e):
         if new_message.value != "":
-            page.pubsub.send_all(Message(page.session.get("user_name"), new_message.value, message_type="chat_message"))
+            page.pubsub.send_all(Message(f"{page.session.get("user_name")} {page.session.get("user_class")}", new_message.value, message_type="chat_message"))
+            cursor.execute("INSERT INTO chat (message, user_id) VALUES (%s, %s)", (new_message.value,page.session.get("user_id") ))
+            mydb.commit()
             new_message.value = ""
             new_message.focus()
             page.update()
@@ -267,7 +297,7 @@ def main(page: ft.Page):
         if index < len(page_map):
             main_body.controls.append(page_map[index])
         else:
-            main_body.controls.append(ft.Column([ft.Text(f"Hmmm. Něco chybí zde. {index} Klikni na Novinky/Pravidla.")], alignment=ft.MainAxisAlignment.START, expand=True))
+            main_body.controls.append(ft.Column([ft.Text(f"HACKER!!! (dělám jsi srandu :D, našel jsi chybu takovou, Tohle ->). {index} je index, jestli máš tam 1 nebo 2 nebo jakýkoliv číslo tak to je jaký číslo má například pravidla. Klikni někam jinam než jsi se kliknul, a budeš zahráněn")], alignment=ft.MainAxisAlignment.START, expand=True))
         page.update()
 
     rail = ft.NavigationRail(
@@ -324,7 +354,7 @@ def main(page: ft.Page):
     )
 
     text_username = ft.TextField(
-        label="Zadej uživatélské jméno.",
+        label="Zadej uživatélské jméno",
         autofocus=True,
         on_submit=join_chat_click,
     )
@@ -348,8 +378,10 @@ def main(page: ft.Page):
 
     def update_online_users():
         online_users_text.value = f"Počet uživatelů online: {len(online_users)}"
+        ft.Text("Funguje to že když jseš sám tak budeš mít 0, ale když se přihlásí někdo, tak ten člověk uvidí 1 online uživatele.")
 
     online_users_text = Text(f"Počet uživatelů online: {len(online_users)}", color=ft.colors.WHITE, size=12)
+    ft.Text("Funguje to že když jseš sám tak budeš mít 0, ale když se přihlásí někdo, tak ten člověk uvidí 1 online uživatele.")
     page.add(online_users_text)
 
     page.add(

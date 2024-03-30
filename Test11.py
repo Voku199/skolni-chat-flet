@@ -15,59 +15,17 @@ mydb = mysql.connector.connect(
 )
 cursor = mydb.cursor()
 
-class ColorPalette(ft.UserControl):
-    def __init__(self, on_select=None):
-        super().__init__()
-        self.on_select = on_select
-        self.colors = [
-            ft.colors.RED,
-            ft.colors.PINK,
-            ft.colors.PURPLE,
-            ft.colors.DEEP_PURPLE,
-            ft.colors.INDIGO,
-            ft.colors.BLUE,
-            ft.colors.LIGHT_BLUE,
-            ft.colors.CYAN,
-            ft.colors.TEAL,
-            ft.colors.GREEN,
-            ft.colors.LIGHT_GREEN,
-            ft.colors.LIME,
-            ft.colors.YELLOW,
-            ft.colors.AMBER,
-            ft.colors.ORANGE,
-            ft.colors.DEEP_ORANGE,
-            ft.colors.BROWN,
-            ft.colors.GREY,
-            ft.colors.BLUE_GREY,
-            ft.colors.WHITE,
-            ft.colors.BLACK,
-        ]
-        self.buttons = []
-        for color in self.colors:
-            button = ft.ElevatedButton(
-                text="",
-                bgcolor=color,
-                on_click=self.on_color_select
-            )
-            self.buttons.append(button)
 
-    def build(self):
+def build(self):
         return ft.Row(self.buttons, spacing=5)
 
-    def on_color_select(self, e):
-        if callable(self.on_select):
-            self.on_select(e.control.bgcolor)
 
 class Nastavení(ft.UserControl):
     def __init__(self):
         super().__init__()
         self.light_mode_switch = Switch(label="Tmavý režim", value=True, on_change=self.light_mode_changed)
         self.reset_password_button = ElevatedButton(text="Resetovat heslo", on_click=self.reset_password_click)
-        self.chat_color_textfield = TextField(label="Hex kód barvy pozadí chatu", value="#FFFFFF", on_change=self.color_changed)
-        self.change_color_button = ElevatedButton(text="Změnit barvu")
-        self.change_color_button.on_click = self.change_color_click
         self.chat_background = ft.colors.WHITE  # Defaultní barva pozadí chatu
-        self.trida_textfield = TextField(label="Zadej třídu:", on_change=self.trida_changed)
 
     def build(self):
         return ft.Column(
@@ -75,10 +33,7 @@ class Nastavení(ft.UserControl):
                 ft.Text("Nastavení", weight=ft.FontWeight.BOLD, size=35),
                 ft.Text("Vyberte režim světla:", size=20),
                 self.light_mode_switch,
-                self.chat_color_textfield,
-                self.change_color_button,
                 self.reset_password_button,
-                self.trida_textfield,
                 ft.Text("Nad dalším nastavením se pracuje! Jestli máte nějaké nápady co přidat do nastavení, ptejte se!"),
                 
             ],
@@ -94,20 +49,6 @@ class Nastavení(ft.UserControl):
         else:
             self.page.theme_mode = ft.ThemeMode.LIGHT
 
-    def color_changed(self, e):
-        selected_color = e.control.value
-        self.page.background_color = selected_color
-        self.page.update()
-
-    def change_color_click(self, e):
-        # Zde můžete implementovat logiku pro změnu barvy chatu
-        palette = ColorPalette(on_select=self.on_color_select)
-        self.page.add(palette)
-
-    def on_color_select(self, selected_color):
-        self.chat_color_textfield.value = selected_color
-        self.page.update()
-
     def reset_password_click(self, e):
         page = self.page
         page.clean()
@@ -117,25 +58,6 @@ class Nastavení(ft.UserControl):
     def return_to_chat_click(self, e):
         # Zde přesměrujte uživatele na zadaný odkaz
         webbrowser.open("https://example.com/chat")
-
-    def trida_changed(self, e):
-        self.trida = e.control.value  # Aktualizace hodnoty atributu trida podle zadání uživatelem
-        print("Zadaná třída:", self.trida)
-
-    def login_user(self, login):
-        text_username = self.page.get_control("text_username")
-        hostname = socket.gethostname()
-        ip_address = socket.gethostbyname(hostname)
-        user = login["user"]["user_name"]
-        trida = login["user"]["trida"]  # Získání třídy uživatele
-        user_with_trida = f"{user} ({trida})"  # Vytvoření jména uživatele s třídou
-        self.page.session.set("user_name", user_with_trida)
-        self.page.session.set("user_id", login["user"]["id"])
-        self.page.dialog.open = False
-        new_message = self.page.get_control("new_message")
-        new_message.prefix = ft.Text(f"{user_with_trida}: ")
-        self.page.pubsub.send_all(ft.Message(user_name=user_with_trida, text=f"{user_with_trida} Se připojil do chatu!. Jeho IP: {ip_address}", message_type="login_message"))
-        self.page.update()
 
 class ResetHesla(ft.UserControl):
     def __init__(self):
