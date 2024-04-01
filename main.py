@@ -176,7 +176,7 @@ def _login(username: TextField, password: TextField) -> dict:
 
 def main(page: ft.Page):
     page.horizontal_alignment = "stretch"
-    page.title = "Zstsobra chat"
+    page.title = "Chat ZŠ Tomáše Šobra"
     page.theme_mode = ft.ThemeMode.DARK
 
     pravidla = Pravidla()
@@ -310,60 +310,57 @@ def main(page: ft.Page):
             main_body.controls.append(ft.Column([ft.Text(f"HACKER!!! (dělám jsi srandu :D, našel jsi chybu takovou, Tohle ->). {index} je index, jestli máš tam 1 nebo 2 nebo jakýkoliv číslo tak to je jaký číslo má například pravidla. Klikni někam jinam než jsi se kliknul, a budeš zahráněn")], alignment=ft.MainAxisAlignment.START, expand=True))
         page.update()
 
-    rail = ft.NavigationRail(
+
+    def toggle_menu(e):
+        page.drawer.open = True
+        page.drawer.update()
+
+    page.drawer = ft.NavigationDrawer(
         selected_index=0,
-        label_type=ft.NavigationRailLabelType.ALL,
-        # extended=True,
-        min_width=100,
-        min_extended_width=425,
-        group_alignment=-0.9,
-        destinations=[
-            ft.NavigationRailDestination(
-                icon=ft.icons.BOOK, selected_icon=ft.icons.BOOK, label="Pravidla"
+        controls=[
+            ft.Container(height=12),
+            ft.NavigationDrawerDestination(
+                icon_content=ft.Icon(ft.icons.BOOK),
+                selected_icon_content=ft.Icon(ft.icons.BOOK),
+                label="Pravidla"
             ),
-            ft.NavigationRailDestination(
+            ft.NavigationDrawerDestination(
                 icon_content=ft.Icon(ft.icons.NEWSPAPER),
                 selected_icon_content=ft.Icon(ft.icons.NEWSPAPER),
                 label="Novinky",
             ),
-            ft.NavigationRailDestination(
+            ft.NavigationDrawerDestination(
                 icon_content=ft.Icon(ft.icons.FAVORITE_BORDER),
                 selected_icon_content=ft.Icon(ft.icons.FAVORITE),
                 label="Podpora",
             ),
-            ft.NavigationRailDestination(
+            ft.NavigationDrawerDestination(
                 icon_content=ft.Icon(ft.icons.SETTINGS),
                 selected_icon_content=ft.Icon(ft.icons.SETTINGS),
                 label="Nastavení"
-                
-
             ),
-            ft.NavigationRailDestination(
+            ft.NavigationDrawerDestination(
                 icon_content=ft.Icon(ft.icons.EDIT_DOCUMENT),
                 selected_icon_content=ft.Icon(ft.icons.EDIT_DOCUMENT),
                 label="Kdo jsem?",
-                
-
             ),
-            ft.NavigationRailDestination(
+            ft.NavigationDrawerDestination(
                 icon_content=ft.Icon(ft.icons.QUESTION_MARK),
                 selected_icon_content=ft.Icon(ft.icons.QUESTION_MARK),
                 label="Otazky",
-                
-
             ),
-            ft.NavigationRailDestination(
+            ft.NavigationDrawerDestination(
                 icon_content=ft.Icon(ft.icons.REPORT),
                 selected_icon_content=ft.Icon(ft.icons.REPORT),
                 label="Nahlášení užv.",
-
-                
- 
-
             ),
         ],
         on_change=lambda e: nav_change(e.control.selected_index),
+
+        # trailing=ft.Icon(ft.Icons.HELP)
     )
+
+    divider = ft.VerticalDivider(width=1)
 
     main_body = ft.Column([Pravidla()], alignment=ft.MainAxisAlignment.START, expand=True, scroll=ft.ScrollMode.AUTO)
     # Chat messages
@@ -396,38 +393,34 @@ def main(page: ft.Page):
         actions_alignment="end",
     )
 
-    def update_online_users():
-        online_users_text.value = f"Počet uživatelů online: {len(online_users)}"
-        ft.Text("Funguje to že když jseš sám tak budeš mít 0, ale když se přihlásí někdo, tak ten člověk uvidí 1 online uživatele.")
-        page.update()
 
-    online_users_text = Text(f"Počet uživatelů online: {len(online_users)}", color=ft.colors.WHITE, size=12)
-    ft.Text("Funguje to že když jseš sám tak budeš mít 0, ale když se přihlásí někdo, tak ten člověk uvidí 1 online uživatele.")
-    page.update()
-    page.add(online_users_text)
+    online_users_text = ft.Text(f"Počet uživatelů online: {len(online_users)}", color=ft.colors.WHITE, size=12)
 
     page.add(
-        ft.Row(
-            [
-                rail,
-                ft.VerticalDivider(width=1),
-                ft.Column([
-                    ft.IconButton(
-                        icon=ft.icons.LOGOUT,
-                        tooltip="Odhlásit",
-                        on_click=lambda e: _logout(page, chat),
-                    ),
-                    main_body]
-                )
+        ft.AppBar(
+            leading=ft.IconButton(
+                icon=ft.icons.MENU,
+                tooltip="Menu",
+                on_click=toggle_menu,
+            ),
+            leading_width=100,
+            title=ft.Text(""),
+            center_title=False,
+            bgcolor=ft.colors.SURFACE_VARIANT,
+            actions=[
+                online_users_text,
+                ft.IconButton(
+                    icon=ft.icons.LOGOUT,
+                    tooltip="Odhlásit",
+                    on_click=lambda e: _logout(page, chat),
+                ),
             ],
-            expand=True,
         )
     )
 
+
     page.pubsub.subscribe(on_message)
     # A dialog asking for a user display name
-
-    print("User not logged in")
 
     # A new message entry form
     new_message = ft.TextField(
@@ -440,7 +433,35 @@ def main(page: ft.Page):
         expand=True,
         on_submit=send_message_click,
     )
-    # Add everything to the page
+
+
+    page.add(
+        ft.Row(
+            [
+                ft.Column([main_body,
+                           # ft.Container(
+                           #     content=chat,
+                           #     border=ft.border.all(1, ft.colors.OUTLINE),
+                           #     border_radius=5,
+                           #     padding=10,
+                           #     expand=True,
+                           # ),
+                           # ft.Row(
+                           #     [
+                           #         new_message,
+                           #         ft.IconButton(
+                           #             icon=ft.icons.SEND_ROUNDED,
+                           #             tooltip="Pošli zprávu",
+                           #             on_click=send_message_click,
+                           #         ),
+                           #     ]
+                           # ),
+                ])
+            ],
+            expand=True,
+        )
+    )
+
     page.add(
         ft.Container(
             content=chat,
@@ -461,8 +482,7 @@ def main(page: ft.Page):
         ),
     )
 
-    # Spustí aktualizaci počtu uživatelů online
-    update_online_users()
+    # Add everything to the page
 
 
 ft.app(port=8550, target=main, view=ft.WEB_BROWSER)

@@ -36,7 +36,7 @@ class Nastavení(ft.UserControl):
                 ft.Text("Vyberte režim světla:", size=20),
                 self.light_mode_switch,
                 self.reset_password_button,
-                ft.Text("Nad dalším nastavením se pracuje! Jestli máte nějaké nápady co přidat do nastavení, ptejte se!"),
+                ft.Text("Nad dalším nastavením se pracuje! Jestli máte nějaké nápady co přidat do nastavení, ptejte se!", max_lines=20),
                 
             ],
             alignment=ft.MainAxisAlignment.CENTER,

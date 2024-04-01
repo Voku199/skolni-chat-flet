@@ -9,15 +9,15 @@ class Podpora(ft.UserControl):
     def build(self):
         return ft.Column(
             [
-                ft.Text("Podpora", weight=ft.FontWeight.BOLD, size=35),
-                ft.Text("Chceš mě finnančně podpořit? Nebo máš nějaký problém ohledně stránky? Kontaktuj mě a vyřešíme to",weight=ft.FontWeight.BOLD, size=15),
-                ft.Text("Moje kontakty najdeš zde!", weight=ft.FontWeight.BOLD),
-                ft.Text("Email : vojta.kurinec@gmail.com"),
-                ft.Text("Moje telefoní číslo : napiš si o něj ;)"),
-                ft.Text("Outlouk : kurinecv15@zstsobra.cz"),
-                ft.Text("Zde mě můžeš finančně podpořit!", weight=ft.FontWeight.BOLD),
+                ft.Text("Podpora", weight=ft.FontWeight.BOLD, size=35, max_lines=20,),
+                ft.Text("Chceš mě finnančně podpořit? Nebo máš nějaký problém ohledně stránky? Kontaktuj mě a vyřešíme to",weight=ft.FontWeight.BOLD, size=15, max_lines=20),
+                ft.Text("Moje kontakty najdeš zde!", weight=ft.FontWeight.BOLD, max_lines=20),
+                ft.Text("Email : vojta.kurinec@gmail.com", max_lines=20),
+                ft.Text("Moje telefoní číslo : napiš si o něj ;)", max_lines=20),
+                ft.Text("Outlouk : kurinecv15@zstsobra.cz", max_lines=20),
+                ft.Text("Zde mě můžeš finančně podpořit!", weight=ft.FontWeight.BOLD, max_lines=20),
                 ft.ElevatedButton("Klikni zde pro podporu!", on_click=lambda e: self.page.launch_url("https://paypal.me/PodporaChatu")),
-                ft.Text("Peníze co pošleš půjde na podporu, nebudeš moct si o ně žažádat zpátky, jestli by to bylo omylem, tak bych potřeboval důkaz a co se všechno stalo", weight=ft.FontWeight.BOLD, size=15),
+                ft.Text("Peníze co pošleš půjde na podporu, nebudeš moct si o ně žažádat zpátky, jestli by to bylo omylem, tak bych potřeboval důkaz a co se všechno stalo", weight=ft.FontWeight.BOLD, size=15, max_lines=20),
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             scroll=ft.ScrollMode.HIDDEN,

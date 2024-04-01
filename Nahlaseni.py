@@ -31,7 +31,7 @@ class Nahlaseni(ft.UserControl):
                 self.reason_to_report,
                 self.submit_button,
                 self.result_text,
-                ft.Text("Když nahlásíte uživatele. Majitel se na to koukne a zajistí jestli by měl dostat mute nebo ne."),
+                ft.Text("Když nahlásíte uživatele. Majitel se na to koukne a zajistí jestli by měl dostat mute nebo ne.", max_lines=20),
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             scroll=ft.ScrollMode.HIDDEN,
