@@ -32,7 +32,8 @@ class Jsem(ft.UserControl):
             alignment=ft.MainAxisAlignment.CENTER,
             scroll=ft.ScrollMode.HIDDEN,
             spacing=7,
-            expand=True
+            expand=True,
+            width=self.page.width-10
         )
 
 

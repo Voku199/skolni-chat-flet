@@ -12,3 +12,9 @@ app.py
 index.html
 Test11.py
 TestP.py
+
+.env
+
+fly.toml
+
+.dockerignore

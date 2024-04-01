@@ -62,9 +62,8 @@ class Pravidla(ft.UserControl):
             alignment=ft.MainAxisAlignment.CENTER,
             scroll=ft.ScrollMode.AUTO,
             spacing=7,
-            expand=True,
+            width=self.page.width-10
         )
-
 
 
 if __name__ == "__main__":

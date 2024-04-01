@@ -22,8 +22,11 @@ class Podpora(ft.UserControl):
             alignment=ft.MainAxisAlignment.CENTER,
             scroll=ft.ScrollMode.HIDDEN,
             spacing=15,
-            expand=True
+            expand=True,
+            width=self.page.width-10
         )
+
+
 if __name__ == "__main__":
     def main(page: ft.Page):
         page.theme_mode = ft.ThemeMode.DARK

@@ -45,7 +45,8 @@ class Novinky(ft.UserControl):
             alignment=ft.MainAxisAlignment.CENTER,
             scroll=ft.ScrollMode.HIDDEN,
             spacing=10,
-            expand=True
+            expand=True,
+            width=self.page.width-10
         )
 
 
