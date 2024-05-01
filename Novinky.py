@@ -9,8 +9,9 @@ import flet as ft
 # the content of the blur tab
 class Novinky(ft.UserControl):
 
-    def __init__(self):
+    def __init__(self, page):
         super().__init__()
+        self.page = page
 
     def build(self):
 
@@ -55,7 +56,7 @@ if __name__ == "__main__":
     def main(page: ft.Page):
         page.theme_mode = ft.ThemeMode.DARK
         page.window_always_on_top = True
-        page.add(Novinky())
+        page.add(Novinky(page))
 
 
     ft.app(main, view=ft.WEB_BROWSER)

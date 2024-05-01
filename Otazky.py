@@ -9,8 +9,9 @@ import flet as ft
 # the content of the blur tab
 class Otazky(ft.UserControl):
 
-    def __init__(self):
+    def __init__(self, page):
         super().__init__()
+        self.page = page
 
     def build(self):
 

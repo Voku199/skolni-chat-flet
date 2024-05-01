@@ -15,12 +15,13 @@ cursor = mydb.cursor()
 
 class Nahlaseni(ft.UserControl):
 
-    def __init__(self):
+    def __init__(self, page):
         super().__init__()
         self.user_to_report = ft.TextField(label="Uživatel k nahlášení:")
         self.reason_to_report = ft.TextField(label="Důvod nahlášení:")
         self.submit_button = ft.ElevatedButton(text="Nahlásit uživatele", on_click=self.report_user)
         self.result_text = ft.Text("")
+        self.page = page
 
 
     def build(self):

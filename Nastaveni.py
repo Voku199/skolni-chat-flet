@@ -22,11 +22,18 @@ def build(self):
 
 
 class Nastavení(ft.UserControl):
-    def __init__(self):
+    def __init__(self, page):
         super().__init__()
         self.light_mode_switch = Switch(label="Tmavý režim", value=True, on_change=self.light_mode_changed)
         self.reset_password_button = ElevatedButton(text="Resetovat heslo", on_click=self.reset_password_click)
         self.chat_background = ft.colors.WHITE  # Defaultní barva pozadí chatu
+        self.page = page
+        self.wallpaper_dropdown = Dropdown(label="Vyberte tapetu:", options=[
+            ft.dropdown.Option("Žluto/Oranžová"),
+            ft.dropdown.Option("Růžovo/Fialová"),
+            ft.dropdown.Option("Černá"),
+            # Přidejte další barvy podle potřeby
+        ], on_change=self.wallpaper_changed)
         
 
     def build(self):
@@ -36,7 +43,11 @@ class Nastavení(ft.UserControl):
                 ft.Text("Vyberte režim světla:", size=20),
                 self.light_mode_switch,
                 self.reset_password_button,
-                ft.Text("Nad dalším nastavením se pracuje! Jestli máte nějaké nápady co přidat do nastavení, ptejte se!", max_lines=20),
+                ft.Text("Vyberte tapetu:", size=20),
+                self.wallpaper_dropdown,
+                ft.Text("Nad dalším nastavením se pracuje! Jestli máte nějaké nápady co přidat do nastavení, ptejte se!", 
+                        max_lines=20
+                        ),
                 
             ],
             alignment=ft.MainAxisAlignment.CENTER,
@@ -51,6 +62,25 @@ class Nastavení(ft.UserControl):
             self.page.theme_mode = ft.ThemeMode.DARK
         else:
             self.page.theme_mode = ft.ThemeMode.LIGHT
+
+    def wallpaper_changed(self, e):
+        # Změna barvy pozadí chatu podle výběru
+        selected_wallpaper = self.wallpaper_dropdown.value
+        if selected_wallpaper == "Žluto/Oranžová":
+            self.page.bgcolor = ft.colors.YELLOW_800
+        elif selected_wallpaper == "Růžovo/Fialová":
+            self.page.bgcolor = ft.colors.PINK_800
+        elif selected_wallpaper == "Černá":
+            self.page.bgcolor = ft.ThemeMode.DARK   
+        
+        self.page.update()  # Aktualizace stránky
+
+    def _logout(page: ft.Page, chat):
+        page.session.clear()
+        chat.controls.clear()
+        page.dialog.open = True
+        page.update()
+        
 
     def reset_password_click(self, e):
         page = self.page

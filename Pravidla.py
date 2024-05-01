@@ -9,8 +9,9 @@ import flet as ft
 # the content of the blur tab
 class Pravidla(ft.UserControl):
 
-    def __init__(self):
+    def __init__(self, page):
         super().__init__()
+        self.page = page
 
 
     def build(self):
@@ -24,7 +25,7 @@ class Pravidla(ft.UserControl):
                         max_lines=20,
                     ),
                 ft.Text("1. Pravdivé jméno nebo přezdívka:", weight=ft.FontWeight.BOLD, max_lines=20),
-                ft.Text("Jste povinni zadat své skutečné jméno nebo používat přezdívku. Anonymní účty nebudou tolerovány.", max_lines=20),
+                ft.Text("Jste povinni zadat své skutečné jméno nebo používat přezdívku. Anonymní účty nebudou tolerovány. Například : a, k, a atd...", max_lines=20),
                 ft.Text("2. Respektujte ostatní:",weight=ft.FontWeight.BOLD, max_lines=20),
                 ft.Text("Budťe vždy zdvořilí a respektujte názory a pohledy ostatních účastníků chatu.", max_lines=20),
                 ft.Text("3. Bez urážek a diskriminace:", weight=ft.FontWeight.BOLD, max_lines=20),
@@ -62,7 +63,7 @@ class Pravidla(ft.UserControl):
             alignment=ft.MainAxisAlignment.CENTER,
             scroll=ft.ScrollMode.AUTO,
             spacing=7,
-            width=self.page.width-10
+            width=self.page.width-10 
         )
 
 

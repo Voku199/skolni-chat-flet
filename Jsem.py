@@ -9,8 +9,9 @@ import flet as ft
 # the content of the blur tab
 class Jsem(ft.UserControl):
 
-    def __init__(self):
+    def __init__(self, page):
         super().__init__()
+        self.page = page
 
     def build(self):
 
@@ -33,7 +34,7 @@ class Jsem(ft.UserControl):
             scroll=ft.ScrollMode.HIDDEN,
             spacing=7,
             expand=True,
-            width=self.page.width-10
+            width=self.page.width-10,
         )
 
 

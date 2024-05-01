@@ -4,8 +4,10 @@ import flet as ft
 # todo: change  link to docs
 # the content of the blur tab
 class Podpora(ft.UserControl):
-    def __init__(self):
+    def __init__(self, page):
         super().__init__()
+        self.page = page
+        
     def build(self):
         return ft.Column(
             [
