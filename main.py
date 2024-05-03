@@ -235,20 +235,20 @@ def main(page: ft.Page):
     page.title = "Chat ZŠ Tomáše Šobra"
     page.theme_mode = ft.ThemeMode.DARK
 
-    # Connect to the database
-    try:
-        mydb = mysql.connector.connect(
-            host=os.environ["DB_HOST"],
-            port=os.environ["DB_PORT"],
-            user=os.environ["DB_USER"],
-            password=os.environ["DB_PASS"],
-            database=os.environ["DB_NAME"],
-            connection_timeout=30
-        )
-        cursor = mydb.cursor()
-    except mysql.connector.Error as err:
-        print("Error connecting to database:", err)
-        return
+    # # Connect to the database
+    # try:
+    #     mydb = mysql.connector.connect(
+    #         host=os.environ["DB_HOST"],
+    #         port=os.environ["DB_PORT"],
+    #         user=os.environ["DB_USER"],
+    #         password=os.environ["DB_PASS"],
+    #         database=os.environ["DB_NAME"],
+    #         connection_timeout=30
+    #     )
+    #     cursor = mydb.cursor()
+    # except mysql.connector.Error as err:
+    #     print("Error connecting to database:", err)
+    #     return
 
     # Rest of the code
     # ...
@@ -406,8 +406,7 @@ def main(page: ft.Page):
         except mysql.connector.Error as err:
             print("Error during checking mute status:", err)
             return False
-        finally:
-            cursor.close()
+
 
     # Funkce pro umlčení uživatele
     def mute_user(user_id, duration_minutes):
@@ -558,6 +557,8 @@ def main(page: ft.Page):
                     page=page,
                 )
             )
+            print(cursor)
+            print(message_text, user_id)
             cursor.execute("INSERT INTO chat (message, user_id) VALUES (%s, %s)", (message_text, user_id))
             mydb.commit()
 
