@@ -20,6 +20,7 @@ online_users = set()
 online_users = {}
 current_page = None
 
+
 mydb = mysql.connector.connect(
     host=os.environ["DB_HOST"],
     port=os.environ["DB_PORT"],
@@ -31,6 +32,7 @@ mydb = mysql.connector.connect(
 cursor = mydb.cursor()
 
 
+
 class Registrace():
     def __init__(self, Page: ft.Page):
 
@@ -39,7 +41,7 @@ class Registrace():
             tridy.append(ft.dropdown.Option(f"{i + 1}.A"))
             tridy.append(ft.dropdown.Option(f"{i + 1}.B"))
 
-        self.user_name = TextField(label="Zadej uživatélské jméno:")
+        self.user_name = TextField(label="Zadej uživatélské jméno:::")
         self.email = TextField(label="Zadej email.")
         self.trida = Dropdown(label="Třída", options=tridy)
         self.password = TextField(label="Zadej heslo.", password=True)
@@ -72,7 +74,7 @@ class Registrace():
             page.session.set("user_class", login["user"]["class"])
             page.session.set("user_role", login["user"]["role"])
             page.dialog.open = False
-            welcome = f"{user} Vítej mezi námi! Snad se ty to bude líbit."
+            welcome = f"{user} Vítej mezi námi! Snad se ty to bude líbit. Můžeš napsat !Help nebo !help a zjistíš co je co!."
             if role:
                 welcome = f"{user} {role} Vítej mezi námi! Snad se ty to bude líbit. Když tak, jsi {role}."
 
@@ -233,6 +235,27 @@ def main(page: ft.Page):
     page.title = "Chat ZŠ Tomáše Šobra"
     page.theme_mode = ft.ThemeMode.DARK
 
+    # Connect to the database
+    try:
+        mydb = mysql.connector.connect(
+            host=os.environ["DB_HOST"],
+            port=os.environ["DB_PORT"],
+            user=os.environ["DB_USER"],
+            password=os.environ["DB_PASS"],
+            database=os.environ["DB_NAME"],
+            connection_timeout=30
+        )
+        cursor = mydb.cursor()
+    except mysql.connector.Error as err:
+        print("Error connecting to database:", err)
+        return
+
+    # Rest of the code
+    # ...
+
+    # Close the database connection when the page is closed
+
+
     pravidla = Pravidla(page)
     novinky = Novinky(page)
     podpora = Podpora(page)
@@ -250,6 +273,7 @@ def main(page: ft.Page):
         otazky,
         nahlaseni,
     ]
+
 
     def join_chat_click(e):
         if page is not None:
@@ -282,7 +306,7 @@ def main(page: ft.Page):
             page.dialog.actions.append(
                 ft.ElevatedButton(text="Zapomenutý údaje?", on_click=clear_error_and_retry)
             )
-            page.dialog.update()
+            # page.dialog.update()
 
         else:
             text_username.value = ""
@@ -296,7 +320,7 @@ def main(page: ft.Page):
             page.session.set("user_role", login["user"]["role"])
             page.dialog.open = False
             new_message.prefix = ft.Text(f"{user}: ")
-            page.pubsub.send_all(Message(user_name=user, text=f"{user} se připojil do chatu. Vítej mezi náma.", message_type="login_message", user_role=None, page=page))
+            page.pubsub.send_all(Message(user_name=user, text=f"{user} se připojil do chatu. Připoj se k pobavení!", message_type="login_message", user_role=None, page=page))
 
             cursor.execute("SELECT message, user_name, class, role FROM chat join user on user.id = chat.user_id order by chat.id desc limit 10")
             result = cursor.fetchall()
@@ -311,7 +335,7 @@ def main(page: ft.Page):
             chat_message = ChatMessage(message)
             chat.controls.append(chat_message)
 
-            page.update()
+            # page.update()
         join_chat_click(e)
 
     def clear_error_and_retry(form):
@@ -323,7 +347,7 @@ def main(page: ft.Page):
                 ft.Text("Zapoměl jsi si heslo nebo uživatelské jméno?"),
                 ft.Text("Kontaktuj mě : vojta.kurinec@gmail.com"),
                 ft.Text("Budu se snažit tak aby to bylo dostatečně rychlý!"),
-                ElevatedButton(text="Zpět k chatu", on_click=lambda e: _logout(page, chat))
+                # ElevatedButton(text="Zpět k chatu", on_click=lambda e: _logout(page, chat))
             ], width=200, height=200, tight=True),
         )
         page.dialog = error_dialog
@@ -342,17 +366,13 @@ def main(page: ft.Page):
 
         page.update()
 
-    def check_connection():
-        if not mydb.is_connected():
-            try:
-                mydb.reconnect(attempts=3, delay=5)
-            except mysql.connector.Error as err:
-                print("Error reconnecting:", err)
+
+   
 
     # Vrátít se zde, udělat zprávy tak aby se zobrazili jenom 1x, a ne vícekrát jak chce system.
     def handle_help(message: Message, page: ft.Page):
 
-        help_text = "Ahoj, já jsem Zib! Jsem tady, abych ti pomohl. Dostupné příkazy jsou:\n"
+        help_text = "Ahoj, já jsem Zib! Jsem robot a dělám to abych jsem ti pomohl. Dostupné příkazy jsou:\n"
         help_text += "- !Help: Zobrazí tuto nápovědu.\n"
         help_text += "- @JehoJméno: Pošle soukromou zprávu uživateli 'JehoJméno'.\n"
         help_text += "- Když tak, když klikneš na ty 3 čáry nahoře, tak to je menu, a uvidíš co je tam! .\n"
@@ -372,17 +392,22 @@ def main(page: ft.Page):
 
 
     def is_muted(user_id):
-        cursor.execute("SELECT mute_end FROM muted_users WHERE user_id = %s", (user_id,))
-        result = cursor.fetchone()
-        if result:
-            mute_end_time = result[0]
-            if datetime.now() < mute_end_time:
-                return True
-            else:
-                # Odstranit záznam z umlčených po vypršení
-                cursor.execute("DELETE FROM muted_users WHERE user_id = %s", (user_id,))
-                mydb.commit()
-        return False
+        try:
+            cursor.execute("SELECT mute_end FROM muted_users WHERE user_id = %s", (user_id,))
+            result = cursor.fetchone()
+            if result:
+                mute_end_time = result[0]
+                if datetime.now() < mute_end_time:
+                    return True
+                else:
+                    cursor.execute("DELETE FROM muted_users WHERE user_id = %s", (user_id,))
+                    mydb.commit()
+            return False
+        except mysql.connector.Error as err:
+            print("Error during checking mute status:", err)
+            return False
+        finally:
+            cursor.close()
 
     # Funkce pro umlčení uživatele
     def mute_user(user_id, duration_minutes):
@@ -412,15 +437,15 @@ def main(page: ft.Page):
         if len(parts) == 2:
             try:
                 user_id = int(parts[1].strip())
-                print(f"Muting user {user_id} for 15 minutes")
+                print(f"Muting user {user_id} for 1 minutes")
 
-                # Mute Duration
-                duration_minutes = 15
+            # Mute Duration
+                duration_minutes = 1
 
-                # Mute the User
+            # Mute the User
                 mute_user(user_id, duration_minutes)
 
-                # Notify the Chat
+            # Notify the Chat
                 current_page.pubsub.send_all(
                     Message(
                         user_name="Zib",
@@ -457,9 +482,8 @@ def main(page: ft.Page):
         # Add more commands here
     }
 
-    def send_message_click(e):
+    def send_message_click(e):        
         message_text = new_message.value
-
         user_id = page.session.get("user_id")
 
         # Zkontrolovat, zda user_id není prázdné
@@ -476,82 +500,7 @@ def main(page: ft.Page):
             return
         print("Odesílání zprávy:", message_text, "Uživatel:", user_id)
 
-        # Zkuste provést SQL příkaz s ošetřením chyb
-        # try:
-        #     cursor.execute("INSERT INTO chat (message, user_id) VALUES (%s, %s)", (message_text, user_id))
-        #     mydb.commit()
-        #     print("Zpráva úspěšně uložena.")
-        # except mysql.connector.Error as err:
-        #     print("Chyba při ukládání zprávy:", err)
-
-        # if new_message:
-        #     message_text = new_message.value
-        #
-        # if message_text and user_id:
-        #     page.pubsub.send_all(
-        #         Message(
-        #             user_name=f"{page.session.get('user_name')} {page.session.get('user_class')}",
-        #             text=message_text,
-        #             message_type="chat_message",
-        #             user_role=page.session.get("user_role"),
-        #             page=page
-        #         )
-        #     )
-        # # cursor.execute("INSERT INTO chat (message, user_id) VALUES (%s, %s)", (message_text, user_id))
-        # # mydb.commit()
-        # new_message.value = ""
-        # new_message.focus()
-        # page.update()
-
-        # if new_message.value != "":
-        #     page.pubsub.send_all(Message(
-        #         user_name=f"{page.session.get('user_name')} {page.session.get('user_class')}",
-        #         text=new_message.value,
-        #         message_type="chat_message",
-        #         user_role=page.session.get("user_role"),
-        #         page=page  # Include the missing 'page' argument
-        #     ))
-        #     cursor.execute("INSERT INTO chat (message, user_id) VALUES (%s, %s)", (new_message.value, page.session.get("user_id")))
-        #     mydb.commit()
-        #     new_message.value = ""
-        #     new_message.focus()
-        #     page.update()
-
-        # if message_text!= "":
-        #     if message_text.startswith("@"):  # Check if the message is private
-        #         parts = message_text.split(" ", 1)
-        #         if len(parts) == 2:
-        #            target_user, private_message = parts
-        #            target_user = target_user[1:]
-        #            if target_user in online_users:
-        #                 target_session_id = online_users[target_user]
-        #             # Send to the specific user
-        #                 page.pubsub.send(target_session_id, private_message)
-        #                 cursor.execute(
-        #                     "INSERT INTO private_chat (message, sender_id, receiver_id) VALUES (%s, %s, %s)",
-        #                     (private_message, page.session.get("user_id"), target_session_id),
-        #                 )
-        #                 mydb.commit()
-        #         else:
-        #             # Handle user not online
-        #             print("Uživatel není online")
-        #     else:a
-        #         # Handle invalid private message format
-        #         print("Špatný formát soukromé zprávy")
-        # else:
-        # It's a public message, send to all users
-        # page.pubsub.send_all(Message(
-        #     user_name=f"{page.session.get('user_name')} {page.session.get('user_class')}",
-        #     text=message_text,
-        #     message_type="chat_message",
-        #     user_role=page.session.get("user_role"),
-        #     page=page
-        # ))
-        # cursor.execute("INSERT INTO chat (message, user_id) VALUES (%s, %s)", (message_text, page.session.get("user_id")))
-        # mydb.commit()
-        # new_message.value = ""
-        # new_message.focus()
-        # page.update()
+   
 
         message_text_lower = message_text.lower().strip()  # Normalizace textu na malá písmena a odstranění mezer
         if message_text_lower.startswith("!help") or message_text_lower.startswith("!mute"):
@@ -563,7 +512,7 @@ def main(page: ft.Page):
             if command in command_list:
                 # Volání obslužné funkce
                 print(f"Calling {command}")  # Ověření, že je volána správná funkce
-                command_list[command](message_text_lower, page)  # Volání správné funkce z `command_list`
+                command_list[command](Message(user_name=page.session.get("user_name"), text=message_text_lower, message_type="command", user_role=page.session.get("user_role"), page=page), page)  # Volání správné funkce z `command_list`
 
             else:
                 print(f"Unknown command: {command}")
@@ -581,7 +530,6 @@ def main(page: ft.Page):
             return # Ukončit funkci, aby zpráva nebyla odeslánaa
 
         if is_muted(user_id):
-            # Informovat uživatele, že je umlčen
             page.pubsub.send_all(
                 Message(
                     user_name="Zib",
@@ -591,10 +539,15 @@ def main(page: ft.Page):
                     page=page,
                 )
             )
+        # Zakázat tlačítko odeslání
+            new_message.disabled = True
+            new_message.update()
             return  # Ukončit funkci, aby zpráva nebyla odeslána
 
-        # Pokud uživatel není umlčen, pokračujte s odesíláním zpráv
+    # Pokud uživatel není umlčen, dovolte odeslat zprávu
+        new_message.disabled = False  # Ujistěte se, že je povolen
         message_text = new_message.value
+
         if message_text:
             page.pubsub.send_all(
                 Message(
@@ -602,7 +555,7 @@ def main(page: ft.Page):
                     text=message_text,
                     message_type="chat_message",
                     user_role=page.session.get("user_role"),
-                    page=page
+                    page=page,
                 )
             )
             cursor.execute("INSERT INTO chat (message, user_id) VALUES (%s, %s)", (message_text, user_id))
@@ -621,6 +574,7 @@ def main(page: ft.Page):
         chat_message = ChatMessage(message)
         chat.controls.append(chat_message)
         page.update()
+        text_password.on_submit = lambda e: join_chat_click(e); page.update()
 
     def nav_change(index):
         main_body.controls.clear()
