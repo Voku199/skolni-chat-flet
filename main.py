@@ -372,7 +372,7 @@ def main(page: ft.Page):
      # Rozdělení textu na části, aby se zkontrolovalo, zda je uveden uživatel
         parts = message.text.split(" ", 1)  # Rozdělení na příkaz a případný zbytek
     
-        if len(parts) == 1:  # Pokud není zadáno uživatelské jméno, zobrazíme všechny zprávy
+        if len(parts) == 1:  # Pokud není zadáno uživatelské jméno nebo ID, zobrazí všechny zprávy
             cursor.execute("SELECT message, user_id FROM chat ORDER BY id DESC LIMIT 100")
             result = cursor.fetchall()
         
@@ -391,15 +391,23 @@ def main(page: ft.Page):
                     )
                 )
             )
-        elif len(parts) == 2:  # Pokud je zadáno uživatelské jméno, zobrazíme zprávy daného uživatele
-            user_name = parts[1].strip()
-            cursor.execute("SELECT message FROM chat WHERE user_id = (SELECT id FROM user WHERE user_name = %s) ORDER BY id DESC", (user_name,))
+    
+        elif len(parts) == 2:  # Pokud je zadán identifikátor (uživatelské jméno nebo ID)
+            user_identifier = parts[1].strip()  # Získat jméno nebo ID
+
+            if user_identifier.isdigit():
+                # Dotaz na zprávy podle uživatelského ID
+                cursor.execute("SELECT message FROM chat WHERE user_id = %s ORDER BY id", (int(user_identifier),))
+            else:
+                # Dotaz na zprávy podle uživatelského jména
+                cursor.execute("SELECT message FROM chat WHERE user_id = (SELECT id FROM user WHERE user_name = %s) ORDER BY id", (user_identifier,))
+
             result = cursor.fetchall()
 
             if not result:
-                user_messages = f"Nenašli jsme žádné zprávy od uživatele {user_name}."
+                user_messages = f"Nenašli jsme žádné zprávy od uživatele s identifikátorem '{user_identifier}'."
             else:
-                user_messages = f"Zprávy od uživatele {user_name}:\n"
+                user_messages = f"Zprávy od uživatele '{user_identifier}':\n"
                 for row in result:
                     user_messages += f"- {row[0]}\n"
 
@@ -414,7 +422,6 @@ def main(page: ft.Page):
                     )
                 )
             )
-
         page.update()
 
 
@@ -450,7 +457,7 @@ def main(page: ft.Page):
                 ChatMessage(
                     Message(
                         user_name="Zib",
-                        text="Musíte zadat jméno uživatele! Např. '!users Vojta'.",
+                        text="Musíte zadat jméno uživatele nebo ID! Např. '!users Vojta' nebo '!users 123'.",
                         message_type="chat_message",
                         user_role="Bot",
                         page=page,
@@ -460,14 +467,19 @@ def main(page: ft.Page):
             page.update()
             return
     
-        username = parts[1].strip()  # Jméno uživatele
-        cursor.execute("SELECT user_name, class, role, id FROM user WHERE user_name = %s LIMIT 1", (username,))
+        user_identifier = parts[1].strip()  # Jméno nebo ID
+        # Rozhodnutí, zda je vstup číselný (ID), nebo ne (jméno)
+        if user_identifier.isdigit():
+            cursor.execute("SELECT user_name, class, role, id FROM user WHERE id = %s LIMIT 1", (user_identifier,))
+        else:
+            cursor.execute("SELECT user_name, class, role, id FROM user WHERE user_name = %s LIMIT 1", (user_identifier,))
+
         result = cursor.fetchone()
 
         if result:
             user_text = f"Uživatel: {result[0]}\nTřída: {result[1]}\nRole: {result[2]}\nID: {result[3]}\n"
         else:
-            user_text = f"Uživatel s jménem '{username}' nebyl nalezen."
+            user_text = f"Uživatel '{user_identifier}' nebyl nalezen."
 
         chat.controls.append(
             ChatMessage(
