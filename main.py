@@ -1,5 +1,5 @@
 import flet as ft
-from flet import Text, ControlEvent, TextField, Dropdown, ElevatedButton, Row
+from flet import Text, ControlEvent, TextField, Dropdown, ElevatedButton, Row, Checkbox 
 from datetime import datetime, timedelta
 import os
 import re
@@ -45,6 +45,8 @@ class Registrace():
         self.trida = Dropdown(label="Třída", options=tridy)
         self.password = TextField(label="Zadej heslo.", password=True)
         self.password_confirm = TextField(label="Potvrď heslo.", password=True)
+        self.souhlas_pravidla = Checkbox(label="Souhlasíš s pravidly který jsou na školní chat?")
+        self.show_pravidla_button = ElevatedButton(text="Zobrazit pravidla", on_click=self.show_pravidla)
         self.submit = ElevatedButton(text="Registrovat", on_click=lambda e: self.submit_click(Page, e))
         self.error_message = Text("Jestli se ty nejde zaregistrovat, tak zkus jiný jméno, třeba přidat za svým jménem tečku, čárku, nebo něco jiného. Někdo už bohužel má tohle jméno zabraný.", size=12)
         self.page = Page
@@ -56,6 +58,10 @@ class Registrace():
             return
         if self.password.value != self.password_confirm.value:
             self.error_message.value = "Hesla se neshodují."
+            self.error_message.update()
+            return
+        if not self.souhlas_pravidla.value:
+            self.error_message.value = "Musíš souhlasit s pravidly."
             self.error_message.update()
             return
         hashed_password, salt = hash_password(self.password.value)
@@ -84,12 +90,66 @@ class Registrace():
         self.error_message.value = "Registrace proběhla úspěšně."
         self.error_message.update()
 
+
+
+    def show_pravidla(self, e):
+        # Otevřít dialogové okno s pravidly
+        pravidla_text = """Pravidla:
+        1. Pravdivé jméno nebo přezdívka:
+            - Jste povinní zadat své skutečné jméno nebo použít přezdívku. Anonymní účty nebudou tolerovány. Například: a, k, ;, a atd...
+        2. Respektujte ostatní:
+            - Budťe vždy zdvořilí a respektujte názory a pohledy ostatních lidí v chatu
+        3. Bez uřážek a diskriminace:
+            - Zakázané jsou urážky, nenávistné komentáře nebo diskriminace na základě pohlaví, rasové příslušnosti, náboženství, sexuální orientace nebo jakéhokoli jiného hlediska.
+        4. Nesdílejte osobní informace:
+            - Neposkytujte osobní informace o sobě nebo o ostatních, abyste chránili svou a jejich soukromí.
+        5. Bez spamu
+            - Nedělejte spam nebo nevyžádanou reklamu. Udržujte konverzaci smysluplnou a relevantn
+        6. Omezte vulgarity:
+            - Omezte používání vulgarit a sprostého jazyka. Snažte se udržovat konverzaci příjemnou. (Platí aj i v jiných jazycích!)
+        7. Žádné nelegální obsah:
+            - Neposkytujte nebo nešiřte sexualní videa, nelegální videa nebo jiný odkazy které jsou nelegální pro malé děti. (Žádný stranky pro dospělé, podpora drog a atd...)
+        8. Nepoužívejte tak velmi velká písmena (Flood):
+            - Zkuste nepsát celý věty s velkými písmenama.
+        9. Nesdílejte falešné informace:
+            - Ověřte si faktickou správnost informací, které sdílíte, a snažte se šířit pouze ověřené a pravdivé informace.
+        10. Bez trolling:
+            - Nedělejte trolling nebo úmyslné vyvolávání konfliktů.
+        11. Udržujte konverzaci aktivný (Tohle pravidlo není povinný!):
+            - Snažte se být aktivní v konverzaci a odpovídejte na otázky nebo komentáře, abyste udrželi plynulý chod chatu.
+        12. Zakázané jsou nesmyslné zprávy:
+            - Neposílejte opakovaně zprávy bez smyslu nebo nesmyslný obsah, zkuste to nějak vysvětlit.
+        13. Respektujte Majitele/Učitelu/Admin/Spolu Majitel
+            - Poslouchejte pokyny Majitele/Učitelu/Admin/Spolu Majitel a respektujte jejich rozhodnutí.
+        14. Přispívejte k pozitivní atmosféře:
+            - Snažte se tvořit pozitivní a podpůrnou atmosféru pro všechny účastníky chatu.
+        15. Pravidla týkajicí se obsahu:
+            - Jste povinni respektovat pravidla týkající se obsahu a neposkytovat nelegální nebo nevhodný materiál.
+        16. Zákat se přihlasovat za jiného:
+            - Je přísný zákaz se přihlasovat za někoho jiného bez jeho povolení.
+        17. Zákaz dávat report někomu ze srandy
+            - Je přísný zákat dávat někomu report jen tak, bez žádnýho důvodu
+        """
+        self.page.dialog = ft.AlertDialog(
+            open=True,
+            modal=True,
+            title=ft.Text("Pravidla chatu"),
+            content=ft.Column([
+                ft.Text(pravidla_text),
+                ft.Text("Souhlasíte s pravidly?"),
+                self.souhlas_pravidla,
+                self.submit,  # Zahrneme tlačítko registrovat i sem, aby uživatel mohl pokračovat ve formuláři po přečtení pravidel
+            ], width=800, height=900, tight=True ),
+        )
+        self.page.update()
+
     def createForm(self):
         return ft.Column([self.user_name,
                           self.email,
                           self.trida,
                           self.password,
                           self.password_confirm,
+                          self.show_pravidla_button,
                           self.submit,
                           self.error_message], width=300, tight=True)
 
@@ -122,9 +182,15 @@ class ChatMessage(ft.Row, str):
                 ft.Text(message.user_name, weight="bold", color=ft.colors.WHITE),
                 ft.Text(message.text, selectable=True, width=message.page.width - 100),
             ]
-
+        
         if message.user_role != None:
             user_info += f" [{message.user_role}]"
+            m = [
+                ft.Text(user_info, weight="bold", color=ft.colors.YELLOW),
+                ft.Text(message.text, selectable=True, width=message.page.width - 100),
+            ]
+
+        if message.user_role != None:
             m = [
                 ft.Text(user_info, weight="bold", color=ft.colors.YELLOW),
                 ft.Text(message.text, selectable=True, width=message.page.width - 100),
@@ -679,16 +745,16 @@ def main(page: ft.Page):
         "!message": show_messages,
         "!users": lambda msg, pg: show_all_users(msg, pg) if len(msg.text.split()) == 1 else show_user_details(msg, pg),
         "!warn": handle_warn_command,
-        "!vypočitat": handle_calculator 
+        "!cl": handle_calculator 
     }
 
     command_permissions = {
-    "!help": [""] or ["Majitel"] or ["Admin"] or ["Učitel"],
+    "!help": ["Majitel", "Admin", "Učitel", "None"],
+    "!cl": ["Majitel", "Admin", "Učitel", " None"],
     "!mute": ["Majitel",] or ["Admin"] or ["Učitel"],
     "!message": ["Majitel",] or ["Admin"] or ["Učitel"],
     "!users": ["Majitel",] or [ "Admin"] or ["Učitel"],
     "!warn": ["Majitel",] or [ "Admin"] or ["Učitel"],
-    "!vypočitat": [""] or ["Majitel"] or ["Admin"] or ["Učitel"]
     }
 
     def process_command(command, user_role, message_text, page):
