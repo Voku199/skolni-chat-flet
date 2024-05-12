@@ -748,13 +748,16 @@ def main(page: ft.Page):
         "!cl": handle_calculator 
     }
 
+    user_permissions = ["Majitel", "Admin", "Učitel", None]
+    full_permissions = ["Majitel", "Admin", "Učitel"]
+
     command_permissions = {
-    "!help": ["Majitel", "Admin", "Učitel", "None"],
-    "!cl": ["Majitel", "Admin", "Učitel", " None"],
-    "!mute": ["Majitel",] or ["Admin"] or ["Učitel"],
-    "!message": ["Majitel",] or ["Admin"] or ["Učitel"],
-    "!users": ["Majitel",] or [ "Admin"] or ["Učitel"],
-    "!warn": ["Majitel",] or [ "Admin"] or ["Učitel"],
+    "!help": user_permissions,
+    "!cl": user_permissions,
+    "!mute": full_permissions,
+    "!message": full_permissions,
+    "!users": full_permissions,
+    "!warn": full_permissions,
     }
 
     def process_command(command, user_role, message_text, page):
@@ -794,7 +797,9 @@ def main(page: ft.Page):
                     )
                 )
             )
-            page.update()
+        new_message.value = ""
+        new_message.focus()
+        page.update()
 
     def send_message_click(e):        
         message_text = new_message.value
