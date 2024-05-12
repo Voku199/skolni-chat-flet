@@ -1,9 +1,8 @@
 import flet as ft
 from flet import Text, ControlEvent, TextField, Dropdown, ElevatedButton, Row
 from datetime import datetime, timedelta
-import socket
-import webbrowser
 import os
+import re
 from Novinky import Novinky
 from Pravidla import Pravidla
 from Podpora import Podpora
@@ -113,8 +112,8 @@ class ChatMessage(ft.Row, str):
     def __init__(self, message: Message):
         super().__init__()
         self.vertical_alignment = "start"
-
         user_info = message.user_name
+    
 
         m = []
 
@@ -168,9 +167,8 @@ class ChatMessage(ft.Row, str):
             ft.colors.INDIGO,
             ft.colors.TEAL,
             ft.colors.LIGHT_GREEN_ACCENT,
-        ]
+        ] 
         return colors_lookup[hash(user_name) % len(colors_lookup)]
-
 
 def hash_password(password, salt=None):
     # Hash a password using bcrypt
@@ -260,9 +258,7 @@ def main(page: ft.Page):
         user_id = page.session.get("user_id")
         
         if page is not None:
-            # Ověřte, že kontrolní prvky jsou správně inicializovány
             if isinstance(text_username, ft.TextField) and isinstance(text_password, ft.TextField):
-                # Před voláním 'page.update()', ujistěte se, že všechny kontrolní prvky mají unikátní identifikátor
                 page.update()
 
         if user_id:
@@ -367,7 +363,6 @@ def main(page: ft.Page):
         new_message.update()  # Aktualizujte uživatelské rozhraní
         new_message.update()
 
-    
     def show_messages(message, page):
      # Rozdělení textu na části, aby se zkontrolovalo, zda je uveden uživatel
         parts = message.text.split(" ", 1)  # Rozdělení na příkaz a případný zbytek
@@ -407,7 +402,7 @@ def main(page: ft.Page):
             if not result:
                 user_messages = f"Nenašli jsme žádné zprávy od uživatele s identifikátorem '{user_identifier}'."
             else:
-                user_messages = f"Zprávy od uživatele '{user_identifier}':\n"
+                user_messages = f"Zprávy od uživatele s ID nebo Uživatelským jménem '{user_identifier}':\n"
                 for row in result:
                     user_messages += f"- {row[0]}\n"
 
@@ -467,17 +462,16 @@ def main(page: ft.Page):
             page.update()
             return
     
-        user_identifier = parts[1].strip()  # Jméno nebo ID
-        # Rozhodnutí, zda je vstup číselný (ID), nebo ne (jméno)
+        user_identifier = parts[1].strip()  
         if user_identifier.isdigit():
-            cursor.execute("SELECT user_name, class, role, id FROM user WHERE id = %s LIMIT 1", (user_identifier,))
+            cursor.execute("SELECT user_name, class, role, id, email FROM user WHERE id = %s LIMIT 1", (user_identifier,))
         else:
-            cursor.execute("SELECT user_name, class, role, id FROM user WHERE user_name = %s LIMIT 1", (user_identifier,))
+            cursor.execute("SELECT user_name, class, role, id, email FROM user WHERE user_name = %s LIMIT 1", (user_identifier,))
 
         result = cursor.fetchone()
 
         if result:
-            user_text = f"Uživatel: {result[0]}\nTřída: {result[1]}\nRole: {result[2]}\nID: {result[3]}\n"
+            user_text = f"Uživatel: {result[0]}\nTřída: {result[1]}\nRole: {result[2]}\nID: {result[3]}\nEmail: {result[4]}\n"
         else:
             user_text = f"Uživatel '{user_identifier}' nebyl nalezen."
 
@@ -495,11 +489,39 @@ def main(page: ft.Page):
         page.update()
         command_list["!message"] = show_messages
     
-    def handle_help(message: Message, page: ft.Page):
+    def handle_calculator(message: Message, page: ft.Page,):
+        calculator_text = "Ahoj, tento příkaz slouží jako kalkulačka. Zadej výraz ve formátu [Příklad] [Operátor] [Příklad]. Podporované operátory jsou: +, -, *, /, %.\n"
+        calculator_text += "Příklad: 5 + 3\n"
+
+        try:
+            parts = re.split(r'(\d+\s*[+-/*%]\s*\d+)', message.text)
+            if len(parts) > 1:
+                expression = parts[1].strip()
+                result = eval(expression)
+                calculator_text += f"Výsledek výpočtu: {result}\n"
+            else:
+                calculator_text = "Neplatný vstup. Zadej výraz ve formátu [Příklad] [Operátor] [Příklad].\n"
+        except Exception as e:
+            calculator_text = f"Chyba při výpočtu: {e}\n"
+
+        message = Message(
+            user_name="Zib",
+            text=calculator_text,
+            message_type="chat_message",
+            user_role="Bot",
+            page=page,
+        )
+        chat_message = ChatMessage(message)
+        chat.controls.append(chat_message)
+    
+    
+    def handle_help(message: Message, page: ft.Page,):
         help_text = "Ahoj, já jsem Zib! Jsem robot a dělám to abych jsem ti pomohl. Dostupné příkazy jsou:\n"
         help_text += "- !Help: Zobrazí tuto nápovědu.\n"
         #help_text += "- @JehoJméno: Pošle soukromou zprávu uživateli 'JehoJméno'.\n"
+        help_text += "- Majitel je Vojtěch Kurinec. Jeho nick je Vojta 6.B [Majitel].\n"
         help_text += "- Když tak, když klikneš na ty 3 čáry nahoře, tak to je menu, a uvidíš co je tam! .\n"
+        help_text += "- Roli získáš nějak, role jsou zde důležitý, tak aby se zde nezfalšovalo kdo je co. Role jsou zatím jenom : Majitel, Admin, Žák/Žákyně (Tu roli žádnou nemá), Učitel. Samozřejmě že se budou přidávat.\n"
         help_text += "- Dodržuj pravidla, tak abys jsi nedostal ban, mute, nebo varování! Jestli máš nějaké otázky, ptej se Majitele.\n"
 
         
@@ -513,10 +535,9 @@ def main(page: ft.Page):
         )
         chat_message = ChatMessage(message)
         chat.controls.append(chat_message)
-
+        
 
     def is_muted(user_id):
-        
         try:
             cursor.execute("SELECT mute_end FROM muted_users WHERE user_id = %s", (user_id,))
             result = cursor.fetchone()
@@ -539,17 +560,8 @@ def main(page: ft.Page):
     
 
     # Funkce pro umlčení uživatele
-    def mute_user(user_id, duration_minutes):
+    def mute_user(user_id, duration_minutes, reason=""):
         try:
-            # if not mydb.is_connected():
-            #     mydb.reconnect(attempts=100, delay=5)
-
-            # Zkontrolujte, zda sloupec 'mute_end' existuje
-            # cursor.execute("SHOW COLUMNS FROM muted_users LIKE 'mute_end'")
-            # if not cursor.fetchone():
-            #     print("Sloupec 'mute_end' neexistuje.")
-            #     return
-
             mute_end_time = datetime.now() + timedelta(minutes=duration_minutes)
             print(f"{user_id} {mute_end_time}")
             cursor.execute("INSERT INTO muted_users (user_id, mute_end) VALUES (%s, %s)", (user_id, mute_end_time))
@@ -563,69 +575,123 @@ def main(page: ft.Page):
     def handle_mute_command(message, page, ):
         parts = message.text.split(" ")
 
-        if len(parts) == 2:
+        if len(parts) >= 3:  # Přidána podmínka pro kontrolu dostatečné délky vstupu
             try:
                 user_id = int(parts[1].strip())
-                print(f"Muting user {user_id} for 1 minutes")
-                duration_minutes = 1
-                mute_user(user_id, duration_minutes)
-
-                            # Použijte nový kurzor pro umlčení uživatele
-                local_cursor = mydb.cursor()
-            
-            # Umlčení uživatele
-                mute_end_time = datetime.now() + timedelta(minutes=duration_minutes)
-                local_cursor.execute("INSERT INTO muted_users (user_id, mute_end) VALUES (%s, %s)", (user_id, mute_end_time))
-                mydb.commit()
+                duration_minutes = int(parts[2].strip())  # Přidána délka umlčení
+                reason = " ".join(parts[3:]) if len(parts) > 3 else ""  # Získání důvodu umlčení
+                print(f"Muting user {user_id} for {duration_minutes} minutes with reason: {reason}")
+                mute_user(user_id, duration_minutes, reason)
 
             # Notify the Chat
                 current_page.pubsub.send_all(
                     Message(
                         user_name="Zib",
                         user_role="Bot",
-                        text=f"Uživatel s ID : {user_id} byl umlčen na {duration_minutes} minut.",
+                        text=f"Uživatel s ID : {user_id} byl umlčen na {duration_minutes} minut. Důvod: {reason}",
                         message_type="system",
                         page=current_page,
                     )
                 )
             except ValueError:
-                current_page.pubsub.send_all(
+                message(
                     Message(
                         user_name="Zib",
                         user_role="Bot",
-                        text="Neplatné ID uživatele. Použijte správný formát !Mute <User_ID>.",
+                        text="Neplatné ID uživatele nebo délka umlčení. Použijte správný formát !Mute <User_ID> <Duration_in_minutes> [<Reason>].",
                         message_type="system",
                         page=current_page,
                     )
                 )
         else:
-            current_page.pubsub.send_all(
+            message(
                 Message(
                     user_name="Zib",
                     user_role="Bot",
-                    text="Neplatný příkaz! Použijte formát !Mute <User_ID>.",
+                    text="Neplatný příkaz! Použijte formát !Mute <User_ID> <Duration_in_minutes> [<Reason>].",
                     message_type="system",
                     page=current_page,
                 )
             )
+    
+    def handle_warn_command(message, page):
+        parts = message.text.split(" ", 1)
+    
+    # Kontrola, zda byl zadán uživatel
+        if len(parts) < 2:
+            chat.controls.append(
+                ChatMessage(
+                    Message(
+                        user_name="Zib",
+                        text="Musíte zadat jméno uživatele! Např. '!warn Vojta'.",
+                        message_type="chat_message",
+                        user_role="Bot",
+                        page=page,
+                    )
+                )
+            )
+            page.update()
+            return
+
+        user_name = parts[1].strip()  # Získat jméno uživatele
+
+    # Vyhledat uživatele podle jména
+        cursor.execute("SELECT id, user_name FROM user WHERE user_name = %s LIMIT 1", (user_name,))
+        user_data = cursor.fetchone()
+
+    # Zkontrolovat, zda byl uživatel nalezen
+        if not user_data:
+            chat.controls.append(
+                ChatMessage(
+                    Message(
+                        user_name="Zib",
+                        text=f"Uživatel '{user_name}' nebyl nalezen.",
+                        message_type="chat_message",
+                        user_role="Bot",
+                        page=page,
+                    )
+                )
+            )
+            page.update()
+            return
+
+    # Pokud byl uživatel nalezen, přidejte varování
+        user_id = user_data[0]
+        cursor.execute("INSERT INTO warnings (user_id, warning_date, warned_by) VALUES (%s, NOW(), %s)", (user_id, page.session.get("user_id")))
+        mydb.commit()
+
+        chat.controls.append(
+            current_page.pubsub.send_all(
+                Message(
+                    user_name="Zib",
+                    text=f"Uživatel '{user_name}' byl varován.",
+                    message_type="chat_message",
+                    user_role="Bot",
+                    page=page,
+                )
+            )
+        )
+        page.update()
 
     command_list = {
         "!help": handle_help,
         "!mute": handle_mute_command,
         "!message": show_messages,
-        "!users": lambda msg, pg: show_all_users(msg, pg) if len(msg.text.split()) == 1 else show_user_details(msg, pg),  # Podmíněné zpracování
-        # Add more commands here
+        "!users": lambda msg, pg: show_all_users(msg, pg) if len(msg.text.split()) == 1 else show_user_details(msg, pg),
+        "!warn": handle_warn_command,
+        "!vypočitat": handle_calculator 
     }
 
     command_permissions = {
-    "!mute": ["Majitel",] or ["Admin"],
-    "!message": ["Majitel",] or ["Admin"],
-    "!users": ["Majitel",] or [ "Admin"],
+    "!help": [""] or ["Majitel"] or ["Admin"] or ["Učitel"],
+    "!mute": ["Majitel",] or ["Admin"] or ["Učitel"],
+    "!message": ["Majitel",] or ["Admin"] or ["Učitel"],
+    "!users": ["Majitel",] or [ "Admin"] or ["Učitel"],
+    "!warn": ["Majitel",] or [ "Admin"] or ["Učitel"],
+    "!vypočitat": [""] or ["Majitel"] or ["Admin"] or ["Učitel"]
     }
 
     def process_command(command, user_role, message_text, page):
-    # Zkontrolujte, zda uživatel má oprávnění pro daný příkaz
-        
         if command not in command_list:
             chat.controls.append(
                 ChatMessage(
@@ -643,16 +709,14 @@ def main(page: ft.Page):
         
         allowed_roles = command_permissions.get(command, [])
         if user_role in allowed_roles:
-        # Pokud má oprávnění, zavolejte příslušnou funkci
             command_list[command](Message(
-                user_name=page.session.get("user_name"), 
-                text=message_text, 
-                message_type="command", 
-                user_role=user_role, 
+                user_name=page.session.get("user_name"),
+                text=message_text,
+                message_type="command",
+                user_role=user_role,
                 page=page
             ), page)
         else:
-        
             chat.controls.append(
                 ChatMessage(
                     Message(
@@ -672,14 +736,12 @@ def main(page: ft.Page):
         user_role = page.session.get("user_role")
 
         local_cursor = mydb.cursor()
-
-
+        
         if message_text.lower().startswith("!"):
             parts = message_text.lower().split(" ", 1)  # Rozdělení na příkaz a zbytek
-            command = parts[0]  # První část je příkaz
-        # Zpracujte příkaz pouze pokud má uživatel oprávnění
+            command = parts[0]
             process_command(command, user_role, message_text, page)
-            return
+            return  
         
         if user_id is None:
             message = Message(
@@ -699,9 +761,10 @@ def main(page: ft.Page):
         print("Odesílání zprávy:", message_text, "Uživatel:", user_id)
 
         message_text_lower = message_text.lower().strip()  
-        if message_text_lower.startswith("!help") or message_text_lower.startswith("!mute"):
+        if message_text_lower.startswith("!help") or message_text_lower.startswith("!calculate"):
             parts = message_text_lower.split(" ", 1)  
             command = parts[0]
+            process_command(command, user_role, message_text, page)
 
             if command in command_list:
                 print(f"Calling {command}") 
@@ -898,10 +961,6 @@ def main(page: ft.Page):
     )
 
     page.pubsub.subscribe(lambda message, page=page: on_message(message, page))
-    # A dialog asking for a user display name
-
-    # A new message entry form
-    # ZDE TO BYLO
 
     page.add(
         ft.Row(
