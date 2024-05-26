@@ -1,8 +1,10 @@
 import flet as ft
-from flet import Text, ControlEvent, TextField, Dropdown, ElevatedButton, Row, Checkbox 
+from flet import Text, ControlEvent, TextField, Dropdown, ElevatedButton, Row, Checkbox
 from datetime import datetime, timedelta
 import os
 import re
+import webbrowser
+import base64
 from Novinky import Novinky
 from Pravidla import Pravidla
 from Podpora import Podpora
@@ -18,6 +20,17 @@ import bcrypt
 online_users = set()
 online_users = {}
 current_page = None
+error_dialog_shown = False
+user_achievements = {}
+
+# Definice achievementů
+achievements = [
+    {"name": "První chat", "description": "Dokončil jste svůj první chat.", "condition": 1},
+    {"name": "Deset chatů", "description": "Dokončil jste 10 chatů.", "condition": 10},
+    {"name": "Sto chatů", "description": "Dokončil jste 100 chatů.", "condition": 100},
+    {"name": "Aktivní účastník", "description": "Pravidelně se účastníte chatů po dobu jednoho týdne.", "condition": 7},  # Example condition
+    # Další achievementy mohou být přidány sem
+]
 
 
 mydb = mysql.connector.connect(
@@ -40,7 +53,7 @@ class Registrace():
             tridy.append(ft.dropdown.Option(f"{i + 1}.A"))
             tridy.append(ft.dropdown.Option(f"{i + 1}.B"))
 
-        self.user_name = TextField(label="Zadej uživatélské jméno:::")
+        self.user_name = TextField(label="Zadej uživatélské jméno:")
         self.email = TextField(label="Zadej email.")
         self.trida = Dropdown(label="Třída", options=tridy)
         self.password = TextField(label="Zadej heslo.", password=True)
@@ -50,6 +63,7 @@ class Registrace():
         self.submit = ElevatedButton(text="Registrovat", on_click=lambda e: self.submit_click(Page, e))
         self.error_message = Text("Jestli se ty nejde zaregistrovat, tak zkus jiný jméno, třeba přidat za svým jménem tečku, čárku, nebo něco jiného. Někdo už bohužel má tohle jméno zabraný.", size=12)
         self.page = Page
+        
 
     def submit_click(self, page, e):
         if not self.user_name.value or not self.email.value or not self.password.value or not self.password_confirm.value or not self.trida.value:
@@ -62,6 +76,10 @@ class Registrace():
             return
         if not self.souhlas_pravidla.value:
             self.error_message.value = "Musíš souhlasit s pravidly."
+            self.error_message.update()
+            return
+        if not self.trida.value:
+            self.error_message.value = "Musíš zadat třídu!"
             self.error_message.update()
             return
         hashed_password, salt = hash_password(self.password.value)
@@ -78,22 +96,26 @@ class Registrace():
             page.session.set("user_id", login["user"]["id"])
             page.session.set("user_class", login["user"]["class"])
             page.session.set("user_role", login["user"]["role"])
+            page.session.set("profile_picture", login["user"]["profile_picture"])
             page.dialog.open = False
             welcome = f"{user} Vítej mezi námi! Snad se ty to bude líbit. Můžeš napsat !Help nebo !help a zjistíš co je co!."
             if role:
-                welcome = f"{user} {role} Vítej mezi námi! Snad se ty to bude líbit. Když tak, jsi {role}."
+                welcome = f"{user} {role} Vítej mezi námi! Snad se ty to bude líbit. Když tak, jsi {role}. Nevím jak jsi to získal, ale dobrá práce. Obešel jsi system"
 
             page.pubsub.send_all(Message(user_name=user, user_role=role, text=welcome, message_type="login_message", page=page)),
-
+            cursor.execute("SELECT message, user_name, class, role, profile_picture FROM chat join user on user.id = chat.user_id order by chat.id desc limit 10")
             page.update()
 
         self.error_message.value = "Registrace proběhla úspěšně."
         self.error_message.update()
 
-
-
     def show_pravidla(self, e):
         # Otevřít dialogové okno s pravidly
+        if not self.user_name.value or not self.email.value or not self.password.value or not self.password_confirm.value or not self.trida.value:
+            self.error_message.value = "Nejdříve vyplňte všechna povinná pole."
+            self.error_message.update()
+            return
+        
         pravidla_text = """Pravidla:
         1. Pravdivé jméno nebo přezdívka:
             - Jste povinní zadat své skutečné jméno nebo použít přezdívku. Anonymní účty nebudou tolerovány. Například: a, k, ;, a atd...
@@ -109,25 +131,21 @@ class Registrace():
             - Omezte používání vulgarit a sprostého jazyka. Snažte se udržovat konverzaci příjemnou. (Platí aj i v jiných jazycích!)
         7. Žádné nelegální obsah:
             - Neposkytujte nebo nešiřte sexualní videa, nelegální videa nebo jiný odkazy které jsou nelegální pro malé děti. (Žádný stranky pro dospělé, podpora drog a atd...)
-        8. Nepoužívejte tak velmi velká písmena (Flood):
-            - Zkuste nepsát celý věty s velkými písmenama.
-        9. Nesdílejte falešné informace:
+        8. Nesdílejte falešné informace:
             - Ověřte si faktickou správnost informací, které sdílíte, a snažte se šířit pouze ověřené a pravdivé informace.
-        10. Bez trolling:
+        9. Bez trolling:
             - Nedělejte trolling nebo úmyslné vyvolávání konfliktů.
-        11. Udržujte konverzaci aktivný (Tohle pravidlo není povinný!):
+        10. Udržujte konverzaci aktivný (Tohle pravidlo není povinný!):
             - Snažte se být aktivní v konverzaci a odpovídejte na otázky nebo komentáře, abyste udrželi plynulý chod chatu.
-        12. Zakázané jsou nesmyslné zprávy:
+        11. Zakázané jsou nesmyslné zprávy:
             - Neposílejte opakovaně zprávy bez smyslu nebo nesmyslný obsah, zkuste to nějak vysvětlit.
-        13. Respektujte Majitele/Učitelu/Admin/Spolu Majitel
+        12. Respektujte Majitele/Učitelu/Admin/Spolu Majitel
             - Poslouchejte pokyny Majitele/Učitelu/Admin/Spolu Majitel a respektujte jejich rozhodnutí.
-        14. Přispívejte k pozitivní atmosféře:
+        13. Přispívejte k pozitivní atmosféře:
             - Snažte se tvořit pozitivní a podpůrnou atmosféru pro všechny účastníky chatu.
-        15. Pravidla týkajicí se obsahu:
-            - Jste povinni respektovat pravidla týkající se obsahu a neposkytovat nelegální nebo nevhodný materiál.
-        16. Zákat se přihlasovat za jiného:
+        14. Zákat se přihlasovat za jiného:
             - Je přísný zákaz se přihlasovat za někoho jiného bez jeho povolení.
-        17. Zákaz dávat report někomu ze srandy
+        15. Zákaz dávat report někomu ze srandy
             - Je přísný zákat dávat někomu report jen tak, bez žádnýho důvodu
         """
         self.page.dialog = ft.AlertDialog(
@@ -136,10 +154,8 @@ class Registrace():
             title=ft.Text("Pravidla chatu"),
             content=ft.Column([
                 ft.Text(pravidla_text),
-                ft.Text("Souhlasíte s pravidly?"),
-                self.souhlas_pravidla,
-                self.submit,  # Zahrneme tlačítko registrovat i sem, aby uživatel mohl pokračovat ve formuláři po přečtení pravidel
-            ], width=800, height=900, tight=True ),
+                ft.Text("Souhlasíte s pravidly?"), self.souhlas_pravidla, self.submit,  # Zahrneme tlačítko registrovat i sem, aby uživatel mohl pokračovat ve formuláři po přečtení pravidel
+            ] ),
         )
         self.page.update()
 
@@ -158,7 +174,6 @@ class Page:
     def __init__(self):
         self.help_shown = False
 
-
 class Message():
     def __init__(self, user_name: str, text: str, message_type: str, user_role: str | None, page):
         self.user_name = user_name
@@ -169,18 +184,20 @@ class Message():
 
 
 class ChatMessage(ft.Row, str):
-    def __init__(self, message: Message):
+    def __init__(self, message: Message,):
         super().__init__()
         self.vertical_alignment = "start"
         user_info = message.user_name
+        #self.message = message
+        #self.replaced_text = replaced_text
     
-
         m = []
 
         if message.user_name:
             m = [
                 ft.Text(message.user_name, weight="bold", color=ft.colors.WHITE),
                 ft.Text(message.text, selectable=True, width=message.page.width - 100),
+                #self.parse_message_content(message.text),
             ]
         
         if message.user_role != None:
@@ -188,12 +205,7 @@ class ChatMessage(ft.Row, str):
             m = [
                 ft.Text(user_info, weight="bold", color=ft.colors.YELLOW),
                 ft.Text(message.text, selectable=True, width=message.page.width - 100),
-            ]
-
-        if message.user_role != None:
-            m = [
-                ft.Text(user_info, weight="bold", color=ft.colors.YELLOW),
-                ft.Text(message.text, selectable=True, width=message.page.width - 100),
+                #self.parse_message_content(message.text),    
             ]
 
         self.controls = [
@@ -208,6 +220,32 @@ class ChatMessage(ft.Row, str):
                 spacing=5,
             ),
         ]
+    #def parse_message_content(self, text: str):
+   
+        #url_pattern = re.compile(r'https?://\S+')
+        #url_matches = url_pattern.findall(text)
+
+    # Seznam pro uchování tlačítek
+        #link_buttons = []
+
+        #for url in url_matches:
+            #link_button_text = f"Jít na stránku: {url}"
+
+            #link_button = ft.ElevatedButton(
+             #   content=ft.Text(link_button_text),
+              #  on_click=lambda e, url=url: self.open_external_link(url),
+            #)
+            #link_buttons.append(link_button)
+
+            #text = text.replace(url, link_button_text)
+
+        #output_text = ft.Text(text, selectable=True, width=1000)
+
+        #return output_text, link_buttons
+
+    #def open_external_link(self, url: str):
+        #
+     #   webbrowser.open_new(url)
 
     def get_initials(self, user_name: str):
         if user_name:
@@ -319,7 +357,6 @@ def main(page: ft.Page):
         nahlaseni,
     ]
 
-
     def join_chat_click(e):
         user_id = page.session.get("user_id")
         
@@ -339,12 +376,18 @@ def main(page: ft.Page):
             text_username.update()
             text_password.update()
             page.dialog.update()
+            page.dialog.actions.append(
+                ft.ElevatedButton(text="Zapomenutý údaje?", on_click=clear_error_and_retry)
+            )
+            #page.dialog.update()
+
             return
 
         login = _login(text_username, text_password)
         # Clear the password field
         text_password.value = ""
         text_password.update()
+        result = None  # Initialize result variable
 
         if not login["success"]:
             error_message = login.get("message", "An unknown error occurred.")
@@ -353,7 +396,8 @@ def main(page: ft.Page):
 
             # Přidáme tlačítko pro znovu přihlášení
             page.dialog.actions.append(
-                ft.ElevatedButton(text="Zapomenutý údaje?", on_click=clear_error_and_retry)
+                ft.ElevatedButton(text="Zapomenutý údaje?", on_click=clear_error_and_retry),
+                error_dialog_shown = True,
             )
             # page.dialog.update()
 
@@ -361,46 +405,59 @@ def main(page: ft.Page):
             text_username.value = ""
             text_username.update()
             user = login["user"]["user_name"]
+            profile_picture_url = login["user"]["profile_picture"] 
             page.session.set("user", login["user"])
             page.session.set("user_name", login["user"]["user_name"])
             page.session.set("user_id", login["user"]["id"])
             page.session.set("user_class", login["user"]["class"])
             page.session.set("user_email", login["user"]["email"])
             page.session.set("user_role", login["user"]["role"])
+            page.session.set("profile_picture", login["user"]["profile_picture"])
             page.dialog.open = False
-            new_message.prefix = ft.Text(f"{user}: ")
+            new_message.prefix = ft.Text(f"{user} : ")
+            
+        if profile_picture_url or not profile_picture_url:
+            profile_picture = ft.Image(src=profile_picture_url, width=50, height=50)
+            new_message.prefix.content = [profile_picture, ft.Text(f"{user}: ")]
+            print(profile_picture_url)
+
             page.pubsub.send_all(Message(user_name=user, text=f"{user} se připojil do chatu. Připoj se k pobavení!", message_type="login_message", user_role=None, page=page))
 
-            cursor.execute("SELECT message, user_name, class, role FROM chat join user on user.id = chat.user_id order by chat.id desc limit 10")
+            cursor.execute("SELECT message, user_name, class, role, profile_picture FROM chat join user on user.id = chat.user_id order by chat.id desc limit 10")
             result = cursor.fetchall()
             columns = [column[0] for column in cursor.description]
 
-        for row in result:
-            data = dict(zip(columns, row))
-            user_name = data["user_name"]
-            user_class = data.get("class", "")
-            user_role = data.get("role", "")  # Získáme třídu uživatele, pokud existuje  # Získáme roli uživatele, pokud existuje
-            message = Message(user_name=f"{user_name} {user_class}", text=data["message"], message_type="chat_message", user_role=user_role, page=page)
-            chat_message = ChatMessage(message)
-            chat.controls.append(chat_message)
+        if result:
+            for row in result:
+                data = dict(zip(columns, row))
+                user_name = data["user_name"]
+                user_class = data.get("class", "")
+                user_role = data.get("role", "")
+                message = Message(user_name=f"{user_name} {user_class}", text=data["message"], message_type="chat_message", user_role=user_role, page=page)
+                chat_message = ChatMessage(message)  # Add the page argument
+                chat.controls.append(chat_message)
 
             # page.update()
         join_chat_click(e)
 
     def clear_error_and_retry(form):
-        error_dialog = ft.AlertDialog(
-            open=True,
-            modal=True,
-            title=ft.Text("Zapomenutý heslo/uživ. jméno"),
-            content=ft.Column([
-                ft.Text("Zapoměl jsi si heslo nebo uživatelské jméno?"),
-                ft.Text("Kontaktuj mě : vojta.kurinec@gmail.com"),
-                ft.Text("Budu se snažit tak aby to bylo dostatečně rychlý!"),
-                # ElevatedButton(text="Zpět k chatu", on_click=lambda e: _logout(page, chat))
-            ], width=200, height=200, tight=True),
-        )
-        page.dialog = error_dialog
-        page.update()
+        global error_dialog_shown
+        if not error_dialog_shown:  # Pokud dialogové okno ještě nebylo zobrazeno
+            error_dialog = ft.AlertDialog(
+                open=True,
+                modal=True,
+                title=ft.Text("Zapomenutý heslo/uživ. jméno"),
+                content=ft.Column([
+                    ft.Text("Zapoměl jsi si heslo nebo uživatelské jméno?"),
+                    ft.Text("Kontaktuj mě : vojta.kurinec@gmail.com"),
+                    ft.Text("Budu se snažit tak aby to bylo dostatečně rychlý!"),
+                    ElevatedButton(text="Zpět k chatu", on_click=lambda e: zpatky(page, chat))
+                ], width=200, height=200, tight=True),
+            )
+            page.dialog = error_dialog
+            page.update()
+            error_dialog_shown = True 
+
 
     def create_account(e):
         # Přesměrování na stránku pro registraci
@@ -414,6 +471,9 @@ def main(page: ft.Page):
         )
 
         page.update()
+
+    def zpatky(page, chat):
+        webbrowser.open_new_tab("voku-skolni-chat.fly.dev")
    
     def update_ui_for_mute_status(user_id):
     # Zkontrolujte, zda je uživatel umlčen
@@ -433,7 +493,7 @@ def main(page: ft.Page):
      # Rozdělení textu na části, aby se zkontrolovalo, zda je uveden uživatel
         parts = message.text.split(" ", 1)  # Rozdělení na příkaz a případný zbytek
     
-        if len(parts) == 1:  # Pokud není zadáno uživatelské jméno nebo ID, zobrazí všechny zprávy
+        if len(parts) == 1:  
             cursor.execute("SELECT message, user_id FROM chat ORDER BY id DESC LIMIT 100")
             result = cursor.fetchall()
         
@@ -484,6 +544,7 @@ def main(page: ft.Page):
                 )
             )
         page.update()
+
 
 
     def show_all_users(message, page):
@@ -556,15 +617,19 @@ def main(page: ft.Page):
         command_list["!message"] = show_messages
     
     def handle_calculator(message: Message, page: ft.Page,):
-        calculator_text = "Ahoj, tento příkaz slouží jako kalkulačka. Zadej výraz ve formátu [Příklad] [Operátor] [Příklad]. Podporované operátory jsou: +, -, *, /, %.\n"
-        calculator_text += "Příklad: 5 + 3\n"
+        calculator_text = "Tohle je kalkulačka. Zatím není podporované více příkladu např : 5+5 a víc už ne .Podporované operátory jsou: +, -, *, /, %.\n"
+
+    #Přidat pak tak aby mohl člověk psát více toho než jenom : 5+5. Např : 5+5+5+5+5+5.
 
         try:
             parts = re.split(r'(\d+\s*[+-/*%]\s*\d+)', message.text)
             if len(parts) > 1:
                 expression = parts[1].strip()
                 result = eval(expression)
-                calculator_text += f"Výsledek výpočtu: {result}\n"
+                calculator_text += f"Příklad který jsi dal je : *{expression}*\n"
+                
+                calculator_text += f"Výsledek výpočtu: **{result}**\n"
+                
             else:
                 calculator_text = "Neplatný vstup. Zadej výraz ve formátu [Příklad] [Operátor] [Příklad].\n"
         except Exception as e:
@@ -583,13 +648,25 @@ def main(page: ft.Page):
     
     def handle_help(message: Message, page: ft.Page,):
         help_text = "Ahoj, já jsem Zib! Jsem robot a dělám to abych jsem ti pomohl. Dostupné příkazy jsou:\n"
-        help_text += "- !Help: Zobrazí tuto nápovědu.\n"
-        #help_text += "- @JehoJméno: Pošle soukromou zprávu uživateli 'JehoJméno'.\n"
+        help_text += "- !Help : Zobrazí tuhle zprávu \n"
+        help_text += "- !cl [Příklad] [Příklad] : cl je kalkulačka. \n"
+        help_text += "- !s [Cokoliv] : !s stojí za 'Search', neboli vyhledávat, umožní vám to vyhledat cokoliv aniž byste otevřeli nějakou kartu"
+        
+        help_text += "- !m [Cokoliv] : Tenhle příkaz funguje tak že vyhledáš všechny zprávy ohledně tý zprávy"
         help_text += "- Majitel je Vojtěch Kurinec. Jeho nick je Vojta 6.B [Majitel].\n"
         help_text += "- Když tak, když klikneš na ty 3 čáry nahoře, tak to je menu, a uvidíš co je tam! .\n"
         help_text += "- Roli získáš nějak, role jsou zde důležitý, tak aby se zde nezfalšovalo kdo je co. Role jsou zatím jenom : Majitel, Admin, Žák/Žákyně (Tu roli žádnou nemá), Učitel. Samozřejmě že se budou přidávat.\n"
         help_text += "- Dodržuj pravidla, tak abys jsi nedostal ban, mute, nebo varování! Jestli máš nějaké otázky, ptej se Majitele.\n"
-
+    
+        if message.user_role in full_permissions:
+            help_text += "\n"
+            help_text += "\n"
+            help_text += "- Další pokročilé příkazy, které jsou dostupné pouze pro Majitele, Adminy a Učitelé a Ředitele.\n"
+            help_text += "-!users [ID (Číslo)/Name (Jméno)] : Zobrazí všechny uživatele. [ID/Name] není povinný, ale když to dáte, všechny jeho věci co známe se zobrazí\n"
+            help_text += "-!message [ID (ČÍslo)/Name (Jméno)] : Zobrazí všechny zprávy od uživatele. [ID/Name] není povinný, ale když to dáte, všechny jeho zprávy co známe se zobrazí\n"
+            help_text += "-!m [Jakýkoliv slovo] : Vyhledá to slovo který ten danný uživatel napsal např : !me Ahoj. Vyhledá to všechny zprávy ohledně Ahoj. "
+            help_text += "-!mute [ID (Číslo)] [Doba] [Důvod] : Umlčí uživatele. [ID] a [Doba] je důležitá! Doba jsou na minuty a Uživatel je přes ID a Důvod není povinný, ale bylo by to dobrý, Vypíše se to do databáze\n"
+            help_text += "-!warn [Name (Jméno)] : Varovaní pro toho uživatele. Vypíše se to do databáze"
         
         message = Message(
             user_name="Zib",
@@ -739,25 +816,225 @@ def main(page: ft.Page):
         )
         page.update()
 
+    def search_command(msg, page):
+        if len(msg.text.split()) < 2:
+        # Pokud uživatel neposkytl žádné hledané výrazy
+            message(
+                Message(
+                    user_name="Bot",
+                    user_role="Bot",
+                    text="Nebyly zadány žádné hledané výrazy.",
+                    message_type="chat_message",
+                    page=page,
+                )
+            )
+            return
+    
+    # Získání hledaného výrazu ze zprávy
+        search_query = ' '.join(msg.text.split()[1:])
+    
+    # Vytvoření URL pro vyhledávání na webu
+        search_url = f"https://www.google.com/search?q={search_query}"
+    
+        try:
+            webbrowser.open_new_tab(search_url)
+            message = Message(
+                user_name="Zib",
+                text=f"Vyhledávání pro '*{search_query}*' bylo uspěšné! Zde je váš odkaz: '{search_url}'",
+                message_type="chat_message",
+                user_role="Bot",
+                page=page,
+            )
+            chat_message = ChatMessage(message)
+            chat.controls.append(chat_message)
+        
+        except Exception as e:
+        # Informovat uživatele o chybě
+            message = Message(
+                user_name="Zib",
+                text=f"Při vyhledávání pro '{search_query}' došlo k chybě: {str(e)}",
+                message_type="chat_message",
+                user_role="Bot",
+                page=page,
+            )
+            chat_message = ChatMessage(message)
+            chat.controls.append(chat_message)
+
+
+    def search_messages(message, page):
+    # Rozdělení textu na části, aby se získal hledaný výraz
+        parts = message.text.split(" ", 1)  # Rozdělení na příkaz a hledaný výraz
+
+        if len(parts) == 1:  
+            chat.controls.append(
+                ChatMessage(
+                    Message(
+                        user_name="Zib",
+                        text="Nebyl zadán žádný hledaný výraz.",
+                        message_type="chat_message",
+                        user_role="Bot",
+                        page=page,
+                    )
+                )
+            )
+            page.update()
+            return
+    
+        search_query = parts[1].strip()  # Získání hledaného výrazu
+
+    # Dotaz na zprávy obsahující hledaný výraz
+        cursor.execute("SELECT message, user_id FROM chat WHERE message LIKE %s ORDER BY id DESC LIMIT 100", ('%' + search_query + '%',))
+        result = cursor.fetchall()
+
+        if not result:
+            chat.controls.append(
+                ChatMessage(
+                    Message(
+                        user_name="Zib",
+                        text=f"Nebyly nalezeny žádné zprávy obsahující výraz '{search_query}'.",
+                        message_type="chat_message",
+                        user_role="Bot",
+                        page=page,
+                    )
+                )
+            )
+            page.update()
+            return
+
+    # Vytvoření zprávy s nalezenými zprávami
+        search_results_text = f"Výsledky vyhledávání pro výraz '{search_query}':\n"
+        for row in result:
+            search_results_text += f"Uživatel ID {row[1]}: {row[0]}\n"
+
+        chat.controls.append(
+            ChatMessage(
+                Message(
+                    user_name="Zib",
+                    text=search_results_text,
+                    message_type="chat_message",
+                    user_role="Bot",
+                    page=page,
+                )
+            )
+        )
+        page.update()
+
+
+    def evaluate_achievements(user_name, message_count):
+        achieved = []
+        for achievement in achievements:
+            if message_count == achievement["condition"]:
+                achieved.append(achievement)
+        return achieved
+    print("eveluate")
+
+# Funkce pro zpracování nové zprávy
+    def process_new_message(message: Message, chat, page: ft.Page):
+        user_name = message.user_name
+
+    # Inicializace uživatele v globálním slovníku, pokud ještě neexistuje
+        if user_name not in user_achievements:
+            user_achievements[user_name] = {"message_count": 0, "achieved": []}
+
+    # Zvýšení počtu zpráv uživatele
+        user_achievements[user_name]["message_count"] += 1
+        message_count = user_achievements[user_name]["message_count"]
+
+    # Vyhodnocení nových achievementů
+        new_achievements = evaluate_achievements(user_name, message_count)
+
+    # Přidání nových achievementů do stavu uživatele
+        for achievement in new_achievements:
+            user_achievements[user_name]["achieved"].append(achievement)
+
+    # Zobrazení zprávy o nových achievementech
+        if new_achievements:
+            achievements_text = "Gratulujeme! Dosáhli jste následujících achievementů:\n"
+            for achievement in new_achievements:
+                achievements_text += f"- {achievement['name']}: {achievement['description']}\n"
+
+        # Vytvoření nové zprávy s achievementy
+            achievement_message = Message(
+                user_name="Zib",
+                text=achievements_text,
+                message_type="chat_message",
+                user_role="Bot",
+                page=page,
+            )
+
+        # Vytvoření chatové zprávy a přidání do chatových kontrol
+            chat_message = ChatMessage(achievement_message)
+            chat.controls.append(chat_message)
+
+    # Přidání uživatelské zprávy do chatu
+        chat_message = ChatMessage(message)
+        chat.controls.append(chat_message)
+        print("process_new_message")
+        page.update()
+
+# Funkce pro zpracování odeslání zprávy uživatelem
+    def on_user_message_submit(e):
+        user_message_text = user_message_input.value  # Získání textu zprávy od uživatele
+        user_name = page.session.get("user_name")  # Získání jména uživatele ze session
+        message = Message(
+            user_name=user_name,
+            text=user_message_text,
+            message_type="chat_message",
+            user_role="User",
+            page=page,
+        )
+        print("on_user_message_submit")
+
+        process_new_message(message, chat, page)
+        user_message_input.value = ""  # Vyčištění vstupního pole
+        page.update()
+
+# Funkce pro zpracování seznamu achievementů
+    def list_achievements(message: Message, page: ft.Page):
+        page = message.page
+        achievements_text = "Dostupné achievementy:\n"
+        for index, achievement in enumerate(achievements, start=1):
+            achievements_text += f"{index}. {achievement['name']}: {achievement['description']}\n"
+
+    # Vytvoření nové zprávy s achievementy
+        new_message = Message(
+            user_name="Zib",
+            text=achievements_text,
+            message_type="chat_message",
+            user_role="Bot",
+            page=page,
+        )
+
+    # Vytvoření chatové zprávy a přidání do chatových kontrol
+        chat_message = ChatMessage(new_message)
+        chat.controls.append(chat_message)
+    
+    
     command_list = {
         "!help": handle_help,
         "!mute": handle_mute_command,
         "!message": show_messages,
         "!users": lambda msg, pg: show_all_users(msg, pg) if len(msg.text.split()) == 1 else show_user_details(msg, pg),
         "!warn": handle_warn_command,
-        "!cl": handle_calculator 
+        "!cl": handle_calculator,
+        "!s": search_command,
+        "!m": search_messages,
+        "!av": list_achievements
     }
 
-    user_permissions = ["Majitel", "Admin", "Učitel", None]
-    full_permissions = ["Majitel", "Admin", "Učitel"]
+    user_permissions = ["Majitel", "Admin", "Učitel", None, "Test", "Ředitel"]
+    full_permissions = ["Majitel", "Admin", "Učitel", "Test", "Ředitel"]
 
     command_permissions = {
     "!help": user_permissions,
     "!cl": user_permissions,
+    "!s": user_permissions,
     "!mute": full_permissions,
     "!message": full_permissions,
     "!users": full_permissions,
     "!warn": full_permissions,
+    "!m": user_permissions,
+    "!av": user_permissions,
     }
 
     def process_command(command, user_role, message_text, page):
@@ -901,17 +1178,26 @@ def main(page: ft.Page):
         # Vymazat pole pro zprávu
         new_message.value = ""
         new_message.focus()
+        
+    def session_handler(page):
+        global chat, user_message_input
+
+    # Nastavení UI a chatové komponenty
+        chat = ft.Column()
+        user_message_input = ft.TextField(label="Vaše zpráva", on_submit=on_user_message_submit)
+
+        page.add(chat)
+        page.add(user_message_input)
+
         page.update()
 
-
     def on_message(message: Message, page: ft.Page):
-
-        # Rozpoznání příkazu začínajícího "
-        # Pokud to není příkaz, pokračujte ve zpracování běžných zpráv
         chat_message = ChatMessage(message)
         chat.controls.append(chat_message)
         page.update()
         text_password.on_submit = lambda e: join_chat_click(e); page.update()
+            # Create a new ChatMessage instance with the required arguments
+
 
     def nav_change(index):
         main_body.controls.clear()
