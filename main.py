@@ -175,11 +175,12 @@ class Page:
         self.help_shown = False
 
 class Message():
-    def __init__(self, user_name: str, text: str, message_type: str, user_role: str | None, page):
+    def __init__(self, user_name: str, text: str, message_type: str, user_role: str | None, page, user_profile_picture: bytes | None = None):
         self.user_name = user_name
         self.text = text
         self.message_type = message_type
         self.user_role = user_role
+        self.user_profile_picture = user_profile_picture
         self.page = page
 
 
@@ -208,12 +209,21 @@ class ChatMessage(ft.Row, str):
                 #self.parse_message_content(message.text),    
             ]
 
-        self.controls = [
-            ft.CircleAvatar(
+        avatar = ft.CircleAvatar(
                 content=ft.Text(self.get_initials(message.user_name, )),
                 color=ft.colors.WHITE,
                 bgcolor=self.get_avatar_color(message.user_name, ),
-            ),
+            )
+
+        if message.user_profile_picture:
+            avatar = ft.CircleAvatar(
+                content=ft.Image(src_base64=message.user_profile_picture.decode('ascii'), width=50, height=50),
+                color=ft.colors.TRANSPARENT
+            )
+
+
+        self.controls = [
+            avatar,
             ft.Column(
                 m,
                 tight=True,
@@ -417,9 +427,8 @@ def main(page: ft.Page):
             new_message.prefix = ft.Text(f"{user} : ")
             
         if profile_picture_url or not profile_picture_url:
-            profile_picture = ft.Image(src=profile_picture_url, width=50, height=50)
+            profile_picture = ft.Image(src_base64=profile_picture_url.decode('ascii'), width=50, height=50)
             new_message.prefix.content = [profile_picture, ft.Text(f"{user}: ")]
-            print(profile_picture_url)
 
             page.pubsub.send_all(Message(user_name=user, text=f"{user} se připojil do chatu. Připoj se k pobavení!", message_type="login_message", user_role=None, page=page))
 
@@ -433,7 +442,7 @@ def main(page: ft.Page):
                 user_name = data["user_name"]
                 user_class = data.get("class", "")
                 user_role = data.get("role", "")
-                message = Message(user_name=f"{user_name} {user_class}", text=data["message"], message_type="chat_message", user_role=user_role, page=page)
+                message = Message(user_name=f"{user_name} {user_class}", text=data["message"], message_type="chat_message", user_role=user_role, page=page, user_profile_picture=data["profile_picture"])
                 chat_message = ChatMessage(message)  # Add the page argument
                 chat.controls.append(chat_message)
 
