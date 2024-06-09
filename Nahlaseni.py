@@ -49,15 +49,18 @@ class Nahlaseni(ft.UserControl):
                 # Vložení nahlášeného uživatele do databáze
                 cursor.execute("INSERT INTO report_guys (report_guys, reason) VALUES (%s, %s)", (report_guys, reason))
                 mydb.commit()
-                self.result_text.value = "Uživatel byl úspěšně nahlášen"
+                self.result_text.value = "Uživatel byl úspěšně nahlášen" 
+                self.result_text.color = ft.colors.GREEN_500
                 self.update()
                 print("Uživatel byl úspěšně nahlášen do databáze.")
             except mysql.connector.Error as err:
                 print(f"Nastala chyba: {err}")
                 self.result_text.value = "Nastala chyba"
+                self.result_text.color = ft.colors.RED_500
                 self.update()
         else:
             self.result_text.value = "Prosím, zadejte jméno uživatele k nahlášení."
+            self.result_text.color = ft.colors.RED_500
             self.update()
             print("Nastala chyba1")
 

@@ -38,7 +38,6 @@ class Novinky(ft.UserControl):
                 ft.Text("Zobrazený zpráv když někdo se připojí. (Co jste viděli poprvé)", max_lines=20),
                 ft.Text("Nad vlastníma profilovíma obrázkama se precuje!", max_lines=20),
                 ft.Text("Nad zapamatování systemu když omylem křížek na tabu!", max_lines=20),
-                ft.Text("Nad hrama v prohlížeci se pracuje 👀", max_lines=20),
                 ft.Text("Nad specialním updatě se pracuje 👀", max_lines=20),
             
                  
