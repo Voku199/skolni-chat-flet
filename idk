@@ -1,0 +1,11 @@
+import emoji
+
+# Definice emotikonů
+heart_emoji = "❤️"
+smile_emoji = "😊"
+star_emoji = "⭐"
+
+# Výpis barevných emotikonů
+print(emoji.emojize(f"Barevný {heart_emoji} emotikon: {heart_emoji}", use_aliases=True))
+print(emoji.emojize(f"Barevný {smile_emoji} emotikon: {smile_emoji}", use_aliases=True))
+print(emoji.emojize(f"Barevný {star_emoji} emotikon: {star_emoji}", use_aliases=True))

@@ -1,5 +1,11 @@
 
 __pycache__/
+node_modules/
+downloads
+models
+*.csv
+*.bz2
+dist/
 
 .idea/
 HTMŮ.html
@@ -38,3 +44,12 @@ iddd.py
 import flet as ft.py
 Test11.py
 import flet as ft.py
+JsemF.ini
+Lol.html
+MiniSpotify.py
+NastaveniF.py
+RecenzeF.py
+testtest.py
+*.mp4
+build
+games
