@@ -1,11 +1,49 @@
-import emoji
+Quiz : 
 
-# Definice emotikonů
-heart_emoji = "❤️"
-smile_emoji = "😊"
-star_emoji = "⭐"
+1.Hlavní město čr
 
-# Výpis barevných emotikonů
-print(emoji.emojize(f"Barevný {heart_emoji} emotikon: {heart_emoji}", use_aliases=True))
-print(emoji.emojize(f"Barevný {smile_emoji} emotikon: {smile_emoji}", use_aliases=True))
-print(emoji.emojize(f"Barevný {star_emoji} emotikon: {star_emoji}", use_aliases=True))
+a. Brno
+b. Ostrava
+c. Olomouce
+d. praha
+
+2. Kolik má čr obyvatel.
+
+a. 9 milionu
+b. 12 milionu
+c. 27 milionu
+d. 530 tisíc
+
+3 Největší město v čr
+
+a. Písek
+b. Voďnany
+c. Vimperk
+d. Brno
+
+4 Kdo byl první prezident ČR?
+
+a. Jára cimermám (ano)
+b. Jiřina Bodhalová
+c. Matěj Ducháček
+d. Peter Pellegrinni
+
+5 Která česká hora je nejvyšší?
+
+a. Krkonoše
+b. Klínovec
+c. Macecha
+b. Lysá hora
+
+6 V jakém roce vstoupila Česká republika do Evropské unie?
+
+a.2005
+b.2000
+c.2003
+d.1945
+
+7Kdo je vymyslel českou hymny?
+a) Tomáš Garyk Masaryk (T.G.M)
+b) Antonín Dvořák
+c) Karel Gott
+d) Petr Lexa

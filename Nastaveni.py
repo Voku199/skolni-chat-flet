@@ -1,18 +1,20 @@
-import flet as ft
-from flet import Text, TextField, ElevatedButton, Switch, colors, Dropdown, FilePicker
-import os
-import mysql.connector
-from pathlib import Path
-from PIL import Image
-import mysql.connector
-from io import BytesIO
 import base64
-
+import os
 # import bcrypt
 import webbrowser
+from io import BytesIO
 
+import io
+
+import flet as ft
+import mysql.connector
+import mysql.connector
+from PIL import Image
+from flet import Text, TextField, ElevatedButton, Switch, Dropdown, FilePicker
 # import socket
 from utils import hash_password
+import tempfile
+import shutil
 
 mydb = mysql.connector.connect(
     host=os.environ["DB_HOST"],
@@ -60,7 +62,7 @@ class Nastavení(ft.UserControl):
             on_change=self.wallpaper_changed,
         )
         self.pick_file_button = ElevatedButton(
-            text="Vybrat soubor na profilový obrázek", on_click=self.pick_file_click
+            text="Vyzkošet si vybrat profilový obrázek.", on_click=self.show_beta_warning
         )
         self.profile_picture = self.load_profile_picture_from_db()
 
@@ -179,15 +181,41 @@ class Nastavení(ft.UserControl):
         self.page.update()  # Aktualizace stránky pro zobrazení FilePickeru
         file_picker.pick_files(allow_multiple=False)
 
+    def show_beta_warning(self, e):
+        # Vytvoření dialogu s informacemi o beta verzi
+        beta_dialog = ft.AlertDialog(
+            title=ft.Text("Beta Verze"),
+            content=ft.Column([
+                ft.Text("Tohle je beta verze. Nefunguje, ale můžete si vyzkoušet, jak by to vypadalo."),
+                ft.Row([
+                    ft.ElevatedButton("Vyzkoušet", on_click=self.pick_file_click),
+                    ft.ElevatedButton("Odejít", on_click=self.close_beta_warning)
+                ])
+            ])
+        )
+
+        self.page.overlay.append(beta_dialog)  # Přidání dialogu do overlay
+        self.page.update()  # Aktualizace stránky pro zobrazení dialogu
+        beta_dialog.open = True
+
+    def close_beta_warning(self, e):
+        # Zavření beta dialogu
+        self.page.overlay.pop()
+        self.page.update()
+
+    def close_test_message(self, e):
+        # Zavření testovacího dialogu
+        self.page.overlay.pop()
+        self.page.update()
+
     def file_picker_result(self, e: ft.FilePickerResultEvent):
         self.message_placeholder.controls.clear()
         if e.files:
             selected_file = e.files[0]
-            print("Vybraný soubor:", selected_file.name)
+            file_path = selected_file.path  # Získání cesty k souboru
 
             if selected_file.name.lower().endswith((".jpg", ".jpeg", ".png")):
                 try:
-                    file_path = os.path.abspath(selected_file.name)
                     if os.path.exists(file_path):
                         with open(file_path, "rb") as file:
                             file_data = file.read()
@@ -198,6 +226,7 @@ class Nastavení(ft.UserControl):
                         image.save(buffer, format="PNG")
                         resized_image_data = buffer.getvalue()
 
+                        # Encode image to base64
                         base64_data = base64.b64encode(resized_image_data).decode("utf-8")
                         src = f"data:image/png;base64,{base64_data}"
 
@@ -219,6 +248,8 @@ class Nastavení(ft.UserControl):
 
                         self.image_dialog.open = True
                         self.page.update()
+                    else:
+                        raise FileNotFoundError("Soubor nebyl nalezen.")
                 except Exception as ex:
                     print("Chyba při čtení souboru:", ex)
                     error_text = ft.Text(f"Chyba při nahrávání souboru: {ex}", color=ft.colors.RED_500)

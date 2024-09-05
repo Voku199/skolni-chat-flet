@@ -13,6 +13,8 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import Flask, request, jsonify
+import threading
+import time
 
 # Důležité
 from Novinky import Novinky
@@ -1387,23 +1389,38 @@ def main(page: ft.Page, ):
 
         return users
 
-    # @app.route('/logout', methods=['POST'])
-    # def logout():
-    # data = request.get_json()
-    # user_id = data.get('user_id')
+    def check_for_new_messages(page, user_name):
+        def task():
+            while True:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute('SELECT sender, message FROM chat WHERE receiver = %s', (user_name,))
+                messages = cursor.fetchall()
+                conn.close()
 
-    # if user_id:
-    #  remove_user_from_online(user_id)
-    #   return jsonify({'status': 'success'}), 200
-    # return jsonify({'status': 'error', 'message': 'User ID missing'}), 400
+                if messages:
+                    for sender, message in messages:
+                        bot_message = f"Uživatel '{sender}' ti poslal zprávu: {message}"
+                        message_obj = Message(
+                            user_name="Zib",
+                            text=bot_message,
+                            message_type="chat_message",
+                            user_role="Bot",
+                            page=page,
+                        )
+                        chat_message = ChatMessage(message_obj)
+                        chat.controls.append(chat_message)
+                        page.update()
+                    # Odstranění zpráv z databáze po jejich zobrazení
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    cursor.execute('DELETE FROM chat WHERE receiver = %s', (user_name,))
+                    conn.commit()
+                    conn.close()
 
-    # def remove_user_from_online(user_id):
-    #    conn = get_db_connection()
-    #   cursor = conn.cursor()
-    #  cursor.execute("DELETE FROM online_users WHERE user_id = %s", (user_id,))
-    # conn.commit()
-    # cursor.close()
-    # conn.close()
+                time.sleep(10)  # Kontrolujte nové zprávy každých 10 sekund
+
+        threading.Thread(target=task, daemon=True).start()
 
     def remove_inactive_users():
         conn = get_db_connection()
@@ -1416,20 +1433,20 @@ def main(page: ft.Page, ):
         cursor.close()
         conn.close()
 
-    def print_online_users():
-        print("Online uživatelé:")
-        for user_name, user in online_users.items():
-            print(f"{user_name} - {user}")
+    # def print_online_users():
+    #     print("Online uživatelé:")
+    #     for user_name, user in online_users.items():
+    #         print(f"{user_name} - {user}")
 
-    def login_user(user_name, page):
-        # Funkce pro přihlášení uživatele
-        online_users[user_name] = User(user_name, page)
-        update_online_users_text(page)
+    # def login_user(user_name, page):
+    #     # Funkce pro přihlášení uživatele
+    #     online_users[user_name] = User(user_name, page)
+    #     update_online_users_text(page)
 
-    def logout_user(user_name):
-        if user_name in online_users:
-            del online_users[user_name]
-            update_online_users_text(page)
+    # def logout_user(user_name):
+    #     if user_name in online_users:
+    #         del online_users[user_name]
+    #         update_online_users_text(page)
 
     def update_online_users_text(page):
         online_user_names = ", ".join(online_users.keys())
@@ -1513,10 +1530,8 @@ def main(page: ft.Page, ):
         # Přidání uživatele do seznamu online uživatelů
         if user_name not in online_users:
             online_users[user_name] = User(user_name)
-            print(f"User '{user_name}' added to online users.")
         user = online_users[user_name]
         user.set_page(user_page)
-        print(f"User '{user_name}' page set to: {user_page}")
 
         # Získání user_id
         user_id = get_user_id(user_name)
@@ -1544,8 +1559,8 @@ def main(page: ft.Page, ):
                 page=user_page,
             )
             chat_message = ChatMessage(message_obj)
-            user_page.controls.append(chat_message)
-            user_page.update()
+            chat.controls.append(chat_message)
+            page.update()
 
         # Odstranění zpráv z databáze po jejich zobrazení
         cursor.execute('DELETE FROM chat WHERE receiver = %s', (user_name,))
@@ -1568,9 +1583,19 @@ def main(page: ft.Page, ):
         page = e.page
         user_name1 = page.session.get("user_name")
         user_name = user_name1  # Replace with the actual username of the logged-in user
-        on_user_login(user_name, page)  # Set the user's page in the online_users dictionary
 
-        page.title = "Chat Application"
+        # Načti uživatele a jejich stránku, ale neaktualizuj online stav
+        if user_name not in online_users:
+            online_users[user_name] = User(user_name)
+        user = online_users[user_name]
+        user.set_page(page)
+
+        check_for_new_messages(page, user_name)  # Spuštění kontrolování nových zpráv
+        warnk = ("\nTohle je beta verze. Některý věci nebudou fungovat, některý jo."
+                 "\nFunguje to tak, že když odeslete zprávu, tak se mu to odešle, aj i na email."
+                 "\nBohužel budete si muset zase rozkliknout znovu chat, tak abyste viděli soukromé zprávy. Bude to vyřešeno co nejdříve.")
+
+        page.title = "Soukromý chat"
 
         # Reference pro textová pole
         recipient_ref = ft.Ref[ft.Dropdown]()
@@ -1578,29 +1603,44 @@ def main(page: ft.Page, ):
 
         # Dialog pro zadání uživatele a zprávy
         private_message_dialog = ft.AlertDialog(
-            title=ft.Text("Send Private Message"),
+            title=ft.Text("Poslat Soukromý chat"),
             content=ft.Column([
-                ft.Dropdown(ref=recipient_ref, label="To:", options=[]),
-                ft.TextField(label="Message:", ref=message_ref),
-            ]),
+                ft.Dropdown(ref=recipient_ref, label="Pro:", options=[]),
+                ft.TextField(label="Zpráva:", ref=message_ref),
+                ft.Text(warnk)
+            ], width=384, height=300),
             actions=[
-                ft.TextButton("Send", on_click=lambda e: send_private_message(e, recipient_ref, message_ref, page)),
-                ft.TextButton("Cancel", on_click=lambda e: close_dialog(private_message_dialog, page)),
-                ft.TextButton("Test", on_click=lambda e: print_online_users())
+                ft.TextButton("Poslat", on_click=lambda e: send_private_message(e, recipient_ref, message_ref, page)),
+                ft.TextButton("Zrušit", on_click=lambda e: close_dialog(private_message_dialog, page))
             ]
         )
 
-        # Načtení uživatelů a otevření dialogu
+        # Upozornění na beta verzi
+        beta_warning_dialog = ft.AlertDialog(
+            title=ft.Text("Beta Version Notice"),
+            content=ft.Text(
+                "\nSoukromý chat je v beta verzi. "
+                "\nNefunguje jak má správně, ale můžete si trošku vyzkoušet alespoň jak bude fungovat "),
+            actions=[
+                ft.TextButton("Chci si vyzkoušet soukromý chat",
+                              on_click=lambda e: open_private_message_dialog(e, page, private_message_dialog)),
+                ft.TextButton("Zrušit", on_click=lambda e: close_dialog(beta_warning_dialog, page))
+            ]
+        )
+
+        # Načtení uživatelů do private_message_dialog
         users = get_users()
         recipient_ref.current.options = [ft.dropdown.Option(user) for user in users]
+
+        # Otevření beta_warning_dialog
+        beta_warning_dialog.open = True
+        page.dialog = beta_warning_dialog
+        page.update()
+
+    def open_private_message_dialog(e, page, private_message_dialog):
         private_message_dialog.open = True
         page.dialog = private_message_dialog
         page.update()
-
-    page.update()
-
-    def test():
-        print(online_users)
 
     # Function to send private message
 
@@ -1695,6 +1735,19 @@ def main(page: ft.Page, ):
     FILES_FOLDER = "files"
     if not os.path.exists(FILES_FOLDER):
         os.makedirs(FILES_FOLDER)
+
+    def beta_pick_files():
+        beta_warning_dialog = ft.AlertDialog(
+            title=ft.Text("Beta Version Notice"),
+            content=ft.Text(
+                "\nVybírání soubory je ještě v bete. "
+                "\nNefunguje jak má správně, ale můžete si trošku vyzkoušet alespoň jak bude fungovat "),
+            actions=[
+                ft.TextButton("Chci si vyzkoušet vybírání souboru",
+                              on_click=lambda e: pick_files_result(e)),
+                ft.TextButton("Zrušit", on_click=lambda e: close_dialog(beta_warning_dialog, page))
+            ]
+        )
 
     def pick_files_result(e: ft.FilePickerResultEvent):
         page = e.page  # Get the page instance from the event
@@ -3040,6 +3093,12 @@ def main(page: ft.Page, ):
                 (message_text, user_id),
             )
 
+            # Aktualizace stavu online uživatele a času poslední aktivity
+            local_cursor.execute(
+                "UPDATE online_users SET is_online = 1, last_activity = NOW() WHERE user_id = %s",
+                (user_id,)
+            )
+
             # mydb.commit()
             mydb.commit()
 
@@ -3300,8 +3359,9 @@ def main(page: ft.Page, ):
                 ),
                 ft.IconButton(
                     icon=ft.icons.UPLOAD_FILE,
-                    on_click=lambda _: pick_files_dialog.pick_files(
-                        allow_multiple=False,
+                    tooltip="Nefuknční, ale pracuje se nad tím",
+                    on_click=lambda _: beta_pick_files(
+
                     )
                 ),
             ]
