@@ -1,6 +1,6 @@
 import base64
 import os
-# import bcrypt
+import bcrypt
 import webbrowser
 from io import BytesIO
 
@@ -12,7 +12,6 @@ import mysql.connector
 from PIL import Image
 from flet import Text, TextField, ElevatedButton, Switch, Dropdown, FilePicker
 # import socket
-from utils import hash_password
 import tempfile
 import shutil
 
@@ -24,6 +23,16 @@ mydb = mysql.connector.connect(
     database=os.environ["DB_NAME"],
 )
 cursor = mydb.cursor()
+
+def hash_password(password, salt=None):
+    # Hash a password using bcrypt
+    if salt is None:
+        salt = bcrypt.gensalt()
+    else:
+        salt = salt.encode("utf-8")
+
+    hashed_password = bcrypt.hashpw(password.encode("utf-8"), salt)
+    return hashed_password, salt
 
 
 def build(self):
