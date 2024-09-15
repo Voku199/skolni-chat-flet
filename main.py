@@ -12,7 +12,6 @@ import random
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from flask import Flask, request, jsonify
 import threading
 import time
 
@@ -38,7 +37,6 @@ current_page = None
 error_dialog_shown = False
 milestones = [10, 100, 1000, 10000]
 incorrect_attempts = 0
-app = Flask(__name__)
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
